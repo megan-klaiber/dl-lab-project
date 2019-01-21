@@ -23,12 +23,23 @@ if __name__ == "__main__":
         #k = raw_input('> ')
         #if k == 'q':
             #break;
-        
-    # env.step(action=np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]))
-    while(True):
-        env.render()
-    
 
+    # while(True):
+        # observation, reward, done, info = env.step(action=np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]))
+        # # action: turn robot (positive = left), lower arm (positive = lower), turn arm (positive = backward), elbow joint (positive = straighten), forearm (positive = outwards), wrist, turn hand
+        # observation, reward, done, info = env.step(action=np.array([0.01, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00]))
+        # observation, reward, done, info = env.step(action=np.array([0.00, 0.00, -0.01, 0.00, 0.00, 0.00, 0.0]))
+        # print("reward: {}".format(reward))
+        # env.render()
+
+    for i in range(200):
+        # action: turn robot (positive = left), lower arm (positive = lower), turn arm (positive = backward), elbow joint (positive = straighten), forearm (positive = outwards), wrist, turn hand
+        observation, reward, done, info = env.step(action=np.array([0.00, 0.00, -1.0, -1.00, 0.00, 0.00, 0.0]))
+        # print("reward: {}".format(reward))
+        env.render()
+
+    while True:
+        env.render()
 
 
 # from rllab.envs.normalized_env import normalize
@@ -40,7 +51,7 @@ if __name__ == "__main__":
 #while(True):
     #arm3d_env.step(action=np.array([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]))
     #arm3d_env.render()
-    
+
 # arm3d_env.step(action=a)
 
 # inner_env = normalize(arm3d_env)
