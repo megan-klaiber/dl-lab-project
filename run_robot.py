@@ -16,6 +16,9 @@ if __name__ == "__main__":
     elif args.env == 1:
         from curriculum.envs.arm3d.arm3d_key_env import Arm3dKeyEnv
         env = Arm3dKeyEnv()
+    elif args.env == 2:
+        from curriculum.envs.arm3d.arm3d_disc_env import Arm3dDiscEnv
+        env = Arm3dDiscEnv()
     else:
         raise ValueError("Unknown value for parameter 'env'.")
 
