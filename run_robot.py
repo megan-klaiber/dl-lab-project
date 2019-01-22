@@ -30,6 +30,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown value for parameter 'env'.")
 
+    env.reset()
     env.render()
 
     do_action = True
@@ -48,7 +49,27 @@ if __name__ == "__main__":
 
     # Alogrithm 1 from [1]
 
+    if not robot:
+        # Get goal state.
+        current_goal = env.current_goal
 
+        n = 10
+        length = np.random.uniform(0, 0.1, n)
+        angle = np.pi * np.random.uniform(0, 2, n)
+        x = np.sqrt(length) * np.cos(angle)
+        y = np.sqrt(length) * np.sin(angle)
+        # import matplotlib.pyplot as plt
+        # plt.scatter(x, y); plt.show()
+
+        starts_old = np.stack((x, y), axis=1)
+        starts = starts_old
+        rews = np.ones(n)
+
+    iter_num = 1000
+    N_new = 20
+    for i to iter_num:
+        starts = sample_nearby(starts, N_new)
+        
 
     # from baselines.trpo_mpi import trpo_mpi
     # trpo_mpi.learn(network='mlp', env=env, total_timesteps=2)
