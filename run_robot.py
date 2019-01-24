@@ -35,13 +35,36 @@ if __name__ == "__main__":
         # print("reward: {}".format(reward))
         # env.render()
 
-    for i in range(200):
+    for i in range(5000):
         # action: turn robot (positive = left), lower arm (positive = lower), turn arm (positive = backward), elbow joint (positive = straighten), forearm (positive = outwards), wrist, turn hand
-        observation, reward, done, info = env.step(action=np.array([0.00, 0.00, -1.0, -1.00, 0.00, 0.00, 0.0]))
-        # print("reward: {}".format(reward))
+        print("step: {}".format(i))
+        observation, reward, done, info = env.step(action=np.array([+1, 0.00, -0.0, -0.00, 0.00, 0.00, 0.0]))
+        print("observation: {}".format(observation))
+        print("reward: {}".format(reward))
         env.render()
 
+    # for i in range(5000):
+    #     # action: turn robot (positive = left), lower arm (positive = lower), turn arm (positive = backward), elbow joint (positive = straighten), forearm (positive = outwards), wrist, turn hand
+    #     print("step: {}".format(i))
+    #     observation, reward, done, info = env.step(action=np.array([0, 1, -0.0, -0.00, 0.00, 0.00, 0.0]))
+    #     print("observation: {}".format(observation))
+    #     print("reward: {}".format(reward))
+    #     env.render()
+    #
+    # for i in range(5000):
+    #     # action: turn robot (positive = left), lower arm (positive = lower), turn arm (positive = backward), elbow joint (positive = straighten), forearm (positive = outwards), wrist, turn hand
+    #     print("step: {}".format(i))
+    #     observation, reward, done, info = env.step(action=np.array([0, 0.00, -0.0, -0.00, 1, 0.00, 0.0]))
+    #     print("observation: {}".format(observation))
+    #     print("reward: {}".format(reward))
+    #     env.render()
+
+    i = 15000
     while True:
+        i = i + 1
+        print("step: {}".format(i))
+        observation, reward, done, info = env.step(action=np.array([0.00, 0.00, -0.0, -0.00, 0.00, 0.00, 0.0]))
+        print("observation: {}".format(observation))
         env.render()
 
 
