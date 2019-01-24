@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     # Alogrithm 1 from [1]
 
-    if not robot:
+    if not robot:    # Maze
         # Get goal state.
         current_goal = env.current_goal
 
