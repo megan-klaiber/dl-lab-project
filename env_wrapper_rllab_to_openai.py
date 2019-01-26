@@ -24,4 +24,11 @@ class WrappedPointMazeEnv(PointMazeEnv):
         ac_space = super().action_space
         return Box(low=ac_space.low, high=ac_space.high, dtype=np.float32)
 
+    def step(self, actions):
+        obs, rewards, dones, infos = super().step(actions)
+        infos = {}   # Caused problems in runner.py, with part "for info in infos: ..."
+        dones = np.array([dones])    # Caused problems in runner.py at the end, when applying "sf01(mb_dones)".
+        rewards = np.array([rewards])    # Maybe helps with command 'ev = explained_variance(values, returns)' in ppo2.py?
+        return obs, rewards, dones, infos
+
     
