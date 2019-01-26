@@ -11,7 +11,7 @@ from gym.spaces import Box
 class WrappedPointMazeEnv(PointMazeEnv):
     
     def __init__(self):
-        super().__init__()
+        super().__init__(coef_inner_rew=1.0)
         self.num_envs = 1
 
     @property
@@ -31,4 +31,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         rewards = np.array([rewards])    # Maybe helps with command 'ev = explained_variance(values, returns)' in ppo2.py?
         return obs, rewards, dones, infos
 
+    def reset(self, state=None):
+        if state is None:
+            return super().reset(np.array([0.9, 0]))
+
+        return super().reset(state)
     
