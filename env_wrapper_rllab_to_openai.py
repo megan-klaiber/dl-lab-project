@@ -13,6 +13,14 @@ class WrappedPointMazeEnv(PointMazeEnv):
     def __init__(self):
         super().__init__(coef_inner_rew=1.0)
         self.num_envs = 1
+        self.max_env_timestep = 500
+        self.fixed_restart_state = None
+        self.episodes_steps = []
+        self.episodes_goal_reached = []
+
+    def post_init_stuff(self, max_env_timestep, fixed_restart_state):
+        self.max_env_timestep = max_env_timestep
+        self.fixed_restart_state = fixed_restart_state
 
     @property
     def observation_space(self):
@@ -29,11 +37,26 @@ class WrappedPointMazeEnv(PointMazeEnv):
         infos = {}   # Caused problems in runner.py, with part "for info in infos: ..."
         dones = np.array([dones])    # Caused problems in runner.py at the end, when applying "sf01(mb_dones)".
         rewards = np.array([rewards])    # Maybe helps with command 'ev = explained_variance(values, returns)' in ppo2.py?
+        self.episodes_steps[-1] += 1
+        # print(dones[0])
+        if dones[0] or (self.episodes_steps[-1] >= self.max_env_timestep):
+            if dones[0]:
+                self.episodes_goal_reached.append(True)
+            else:
+                self.episodes_goal_reached.append(False)
+            # Reset env when goal is reached or max timesteps is reached.
+            # print("Resetted in step!")
+            obs = self.reset()
         return obs, rewards, dones, infos
 
     def reset(self, state=None):
-        if state is None:
-            return super().reset(np.array([0.9, 0]))
-
-        return super().reset(state)
+        if state is not None:
+            result = super().reset(state)
+        elif self.fixed_restart_state is not None:
+            result = super().reset(self.fixed_restart_state)
+        else:
+            result = super().reset()
+            
+        self.episodes_steps.append(0)
+        return result
     
