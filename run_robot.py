@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     iter_num = 1000
     N_new = 20
-    for i to iter_num:
+    for i in iter_num:
         starts = sample_nearby(starts, N_new)
 
     # from baselines.trpo_mpi import trpo_mpi
