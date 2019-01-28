@@ -11,7 +11,7 @@ from gym.spaces import Box
 class WrappedPointMazeEnv(PointMazeEnv):
     
     def __init__(self):
-        super().__init__(coef_inner_rew=1.0)
+        super().__init__(coef_inner_rew=1.0, maze_id=11)
         self.num_envs = 1
         self.max_env_timestep = 500
         self.fixed_restart_state = None
