@@ -43,7 +43,6 @@ env.post_init_stuff(max_env_timestep=150, fixed_restart_state=None)
 # nsteps = 50000
 # total_timesteps = 300 * nsteps
 
-
 model = ppo2.learn(network='mlp',
                    env=env,
                    save_interval=100,

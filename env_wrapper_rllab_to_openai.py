@@ -18,9 +18,10 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.episodes_steps = []
         self.episodes_goal_reached = []
 
-    def post_init_stuff(self, max_env_timestep, fixed_restart_state):
+    def post_init_stuff(self, max_env_timestep, fixed_restart_state, eval_runs=10):
         self.max_env_timestep = max_env_timestep
         self.fixed_restart_state = fixed_restart_state
+        self.eval_runs = eval_runs
 
     @property
     def observation_space(self):
@@ -32,7 +33,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         ac_space = super().action_space
         return Box(low=ac_space.low, high=ac_space.high, dtype=np.float32)
 
-    def step(self, actions):
+    def step(self, actions, train=True):
         obs, rewards, dones, infos = super().step(actions)
         infos = {}   # Caused problems in runner.py, with part "for info in infos: ..."
         dones = np.array([dones])    # Caused problems in runner.py at the end, when applying "sf01(mb_dones)".
@@ -46,10 +47,10 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.episodes_goal_reached.append(False)
             # Reset env when goal is reached or max timesteps is reached.
             # print("Resetted in step!")
-            obs = self.reset()
+            obs = self.reset(train)
         return obs, rewards, dones, infos
 
-    def reset(self, state=None):
+    def reset(self, state=None, train=True):
         if state is not None:
             result = super().reset(state)
         elif self.fixed_restart_state is not None:
@@ -60,3 +61,12 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.episodes_steps.append(0)
         return result
     
+    def evaluate(self, model):
+        for i in range(self.eval_runs):
+            self.reset(train=False)
+            for s in range(self.max_env_timestep):
+                model
+        # env_eval = WrappedPointMazeEnv()
+        # env_eval.setstartdistr()
+        # self.reset()
+        pass
