@@ -52,6 +52,7 @@ model = ppo2.learn(network='mlp',
                    num_layers=2,
                    num_hidden=64,
                    activation=tf.nn.relu)
+env.save()
 
 #model = ppo2.learn(network='mlp', env=env, total_timesteps=100000, nsteps=1, nminibatches=1,
                    #num_layers=2,
