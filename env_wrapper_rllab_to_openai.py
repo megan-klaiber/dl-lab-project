@@ -19,7 +19,6 @@ class WrappedPointMazeEnv(PointMazeEnv):
         super().__init__(coef_inner_rew=1.0, maze_id=11)
         self.num_envs = 1
         self.max_env_timestep = 500
-        self.fixed_restart_state = None
         self.episodes_steps = []
         self.episodes_goal_reached = []
         # integer that saves the index of the current start during training
@@ -33,10 +32,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.do_rendering = False
 
 
-    def post_init_stuff(self, max_env_timestep, fixed_restart_state, eval_runs=10,
+    def post_init_stuff(self, max_env_timestep, eval_runs=10,
                         sampling_method='good_starts', do_rendering=False):
         self.max_env_timestep = max_env_timestep
-        self.fixed_restart_state = fixed_restart_state
         self.eval_runs = eval_runs
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
         self.do_rendering = do_rendering
@@ -112,7 +110,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # only want the current observation
                 _obs, _rew, _done, _env_info = super().step(a)
                 # only want the start state part of the current state
-                s_1 = self.get_current_obs()[:2]
+                s_1 = self.get_current_obs()[:2].reshape(1, -1)
                 starts = np.append(starts, s_1, axis=0)
                 self.render()
                 timestep = 0.01
@@ -122,8 +120,14 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # do not see why this is necessary atm
 
         # now sample from the M start states
-        new_starts = sample_n(starts, n_new)
+        new_starts = self.sample_n(starts, n_new)
         return new_starts
+
+    def sample_n(self, array, n):
+        """ sample n elements from the array """
+        num_elements = array.shape[0]
+        inds = np.random.choice(num_elements, size=n, replace=False)
+        return array[inds, ...]
 
     def reset(self, state=None, train=True):
         if state is not None:
@@ -161,7 +165,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
     def evaluate(self, model):
         # For using this method add add "runner.obs[:] = env.evaluate(model)" in ppo2.py.
-        
+
         current_eval_results = []
         for i in range(self.eval_runs):
             obs = self.reset(train=False)
@@ -175,7 +179,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.eval_results.add(current_eval_results)
         obs = self.reset(train=True)
         return obs
-            
+
     def save(self, file_name="results.json"):
         if not os.path.exists("results"):
             os.mkdir("results")
