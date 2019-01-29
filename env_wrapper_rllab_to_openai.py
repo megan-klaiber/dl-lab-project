@@ -30,7 +30,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.eval_results = {}
         # intialize start state lists
         # first initialize curriculum_starts with states close to the goal state
-        
+
         self.steps_per_curriculum = 50000
         self.do_rendering = False
 
@@ -42,7 +42,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
         self.do_rendering = do_rendering
         self.steps_per_curriculum = steps_per_curriculum
-        
+
         if self.sampling_method != 'uniform':
             self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
             self.start_counts = np.zeros(self.curriculum_starts.shape[0])
@@ -74,7 +74,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # good_starts = ....
                 starts = self.curriculum_starts
                 self.curriculum_starts = self.sample_nearby(starts) # or good_starts...
-                
+
                 self.start_counts = np.zeros(self.curriculum_starts.shape[0])
                 self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
             self.global_train_steps += 1
@@ -84,7 +84,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         if dones or (self.episodes_steps[-1] >= self.max_env_timestep):
             if dones:
                 self.episodes_goal_reached.append(True)
-                if train:
+                if train and self.sampling_method != 'uniform':
                     self.goal_counts[self.current_start] += 1
             else:
                 self.episodes_goal_reached.append(False)
@@ -201,7 +201,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
             os.mkdir("results")
 
         fname = os.path.join("results", file_name)
-        
+
         fh = open(fname, "w")
         json.dump(self.eval_results, fh)
         fh.close()
