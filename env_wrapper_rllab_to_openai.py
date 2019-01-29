@@ -30,6 +30,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         # first initialize curriculum_starts with states close to the goal state
         self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
         self.do_rendering = False
+        
+        self.start_counts = np.zeros(self.curriculum_starts.shape[0])
+        self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
 
 
     def post_init_stuff(self, max_env_timestep, eval_runs=10,
@@ -64,6 +67,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # good_starts = ....
                 starts = self.curriculum_starts
                 self.curriculum_starts = self.sample_nearby(starts) # or good_starts...
+                
+                self.start_counts = np.zeros(self.curriculum_starts.shape[0])
+                self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
 
             else:
                 self.global_train_steps += 1
@@ -133,9 +139,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         if state is not None:
             result = super().reset(state)
         elif train:
-            result = super().reset(sample_curriculum())
+            result = super().reset(self.sample_curriculum())
         elif not train:
-            result = super().reset(sample_uniform())
+            result = super().reset(self.sample_uniform())
         # elif self.fixed_restart_state is not None:
         #     result = super().reset(self.fixed_restart_state)
         else:
@@ -144,7 +150,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.episodes_steps.append(0)
         return result
 
-    def sample_uniform():
+    def sample_uniform(self):
         # sample a start state from a uniform start distribution
         sample_cnt = 0
         while True:
@@ -154,13 +160,11 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 print('Samples until feasible:', sample_cnt)
                 return s
 
-    def sample_curriculum():
+    def sample_curriculum(self):
         # sample from the current start state distribution according to the curriculum
         start_ind = np.random.choice(self.curriculum_starts.shape[0])
         self.current_start = start_ind
         self.start_counts[start_ind] += 1
-        # self.start_counts = np.zeros(self.curriculum_starts.shape[0])
-        # self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
         return self.curriculum_starts[start_ind]
 
     def evaluate(self, model):
