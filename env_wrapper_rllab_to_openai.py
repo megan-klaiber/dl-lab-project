@@ -156,11 +156,27 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return self.curriculum_starts[start_ind]
 
     def evaluate(self, model):
+        # For using this method add add "runner.obs[:] = env.evaluate(model)" in ppo2.py.
+        
+        current_eval_results = []
         for i in range(self.eval_runs):
-            self.reset(train=False)
+            obs = self.reset(train=False)
+            done = False
             for s in range(self.max_env_timestep):
-                model
-        # env_eval = WrappedPointMazeEnv()
-        # env_eval.setstartdistr()
-        # self.reset()
-        pass
+                actions, _, _, _ = model.step(obs)
+                obs, _, done, _ = self.step(actions)
+                if done:
+                    break
+            current_eval_results.append(done)
+        self.eval_results.add(current_eval_results)
+        obs = self.reset(train=True)
+        return obs
+            
+    def save(self, file_name="results.json"):
+        if not os.path.exists("results"):
+            os.mkdir("results")
+
+        fname = os.path.join("results", file_name)
+        fh = open(fname, "w")
+        json.dump(self.eval_results, fh)
+        fh.close()
