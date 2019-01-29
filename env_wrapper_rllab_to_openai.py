@@ -1,4 +1,6 @@
+import json
 import numpy as np
+import os
 import random
 
 from curriculum.envs.maze.point_maze_env import PointMazeEnv
@@ -24,23 +26,27 @@ class WrappedPointMazeEnv(PointMazeEnv):
         # integer that saves the index of the current start during training
         self.current_start = None
         self.global_train_steps = 0
-        self.sampling_method = 'good_starts'
-        self.eval_results = []
+        self.sampling_method = 'uniform'
+        self.eval_results = {}
         # intialize start state lists
         # first initialize curriculum_starts with states close to the goal state
-        self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
-        self.do_rendering = False
         
-        self.start_counts = np.zeros(self.curriculum_starts.shape[0])
-        self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
+        self.steps_per_curriculum = 50000
+        self.do_rendering = False
 
 
     def post_init_stuff(self, max_env_timestep, eval_runs=10,
-                        sampling_method='good_starts', do_rendering=False):
+                        sampling_method='uniform', do_rendering=False, steps_per_curriculum = 50000):
         self.max_env_timestep = max_env_timestep
         self.eval_runs = eval_runs
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
         self.do_rendering = do_rendering
+        self.steps_per_curriculum = steps_per_curriculum
+        
+        if self.sampling_method != 'uniform':
+            self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
+            self.start_counts = np.zeros(self.curriculum_starts.shape[0])
+            self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
 
 
     @property
@@ -57,11 +63,12 @@ class WrappedPointMazeEnv(PointMazeEnv):
         obs, rewards, dones, infos = super().step(actions)
         if self.do_rendering:
             self.render()
-            timestep = 0.01
-            speedup = 5
-            time.sleep(timestep / speedup)
+            # timestep = 0.01
+            # speedup = 5
+            # time.sleep(timestep / speedup)
         if train:
-            if self.global_train_steps % 50000 == 0:
+            if (self.global_train_steps % self.steps_per_curriculum == 0) \
+               and self.sampling_method != 'uniform':
                 # find good starts
                 goal_reach_frequencies = self.goal_counts / self.start_counts
                 # good_starts = ....
@@ -70,16 +77,12 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 
                 self.start_counts = np.zeros(self.curriculum_starts.shape[0])
                 self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
+            self.global_train_steps += 1
 
-            else:
-                self.global_train_steps += 1
-        infos = {}   # Caused problems in runner.py, with part "for info in infos: ..."
-        dones = np.array([dones])    # Caused problems in runner.py at the end, when applying "sf01(mb_dones)".
-        rewards = np.array([rewards])    # Maybe helps with command 'ev = explained_variance(values, returns)' in ppo2.py?
         self.episodes_steps[-1] += 1
         # print(dones[0])
-        if dones[0] or (self.episodes_steps[-1] >= self.max_env_timestep):
-            if dones[0]:
+        if dones or (self.episodes_steps[-1] >= self.max_env_timestep):
+            if dones:
                 self.episodes_goal_reached.append(True)
                 if train:
                     self.goal_counts[self.current_start] += 1
@@ -87,7 +90,11 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.episodes_goal_reached.append(False)
             # Reset env when goal is reached or max timesteps is reached.
             # print("Resetted in step!")
-            obs = self.reset(train)
+            if train:
+                obs = self.reset(train=train)
+        rewards = np.array([rewards])    # Maybe helps with command 'ev = explained_variance(values, returns)' in ppo2.py?
+        dones = np.array([dones])    # Caused problems in runner.py at the end, when applying "sf01(mb_dones)".
+        infos = {}   # Caused problems in runner.py, with part "for info in infos: ..."
         return obs, rewards, dones, infos
 
     def sample_nearby(self, states, n_new=200, variance=0.5, t_b=50, M=1000):
@@ -121,7 +128,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.render()
                 timestep = 0.01
                 speedup = 1
-                time.sleep(timestep / speedup)
+                # time.sleep(timestep / speedup)
                 # rllab also tested if the exploration led through the goal state
                 # do not see why this is necessary atm
 
@@ -138,16 +145,15 @@ class WrappedPointMazeEnv(PointMazeEnv):
     def reset(self, state=None, train=True):
         if state is not None:
             result = super().reset(state)
+        elif not train or self.sampling_method == 'uniform':
+            result = super().reset(self.sample_uniform())
         elif train:
             result = super().reset(self.sample_curriculum())
-        elif not train:
-            result = super().reset(self.sample_uniform())
-        # elif self.fixed_restart_state is not None:
-        #     result = super().reset(self.fixed_restart_state)
         else:
             result = super().reset()
 
         self.episodes_steps.append(0)
+
         return result
 
     def sample_uniform(self):
@@ -170,17 +176,23 @@ class WrappedPointMazeEnv(PointMazeEnv):
     def evaluate(self, model):
         # For using this method add add "runner.obs[:] = env.evaluate(model)" in ppo2.py.
 
+        print("Evaluation start ... ")
+        current_eval_index = len(self.eval_results)
         current_eval_results = []
         for i in range(self.eval_runs):
             obs = self.reset(train=False)
             done = False
             for s in range(self.max_env_timestep):
                 actions, _, _, _ = model.step(obs)
-                obs, _, done, _ = self.step(actions)
+                obs, _, done, _ = self.step(actions, train=False)
                 if done:
                     break
-            current_eval_results.append(done)
-        self.eval_results.add(current_eval_results)
+            if done:
+                current_eval_results.append(1)
+            else:
+                current_eval_results.append(0)
+        self.eval_results[current_eval_index] = current_eval_results
+        print(" ... Evaluation finished")
         obs = self.reset(train=True)
         return obs
 
@@ -189,6 +201,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
             os.mkdir("results")
 
         fname = os.path.join("results", file_name)
+        
         fh = open(fname, "w")
         json.dump(self.eval_results, fh)
         fh.close()

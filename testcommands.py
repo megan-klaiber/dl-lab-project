@@ -37,7 +37,8 @@ from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
 
 env = WrappedPointMazeEnv()
 # env.post_init_stuff(max_env_timestep=150, fixed_restart_state=np.array([0.8, 0]))
-env.post_init_stuff(max_env_timestep=150, do_rendering=True)
+env.post_init_stuff(eval_runs=2, max_env_timestep=500, do_rendering=True, sampling_method='uniform',
+                    steps_per_curriculum = 10000)
 # Idee:
 # max_env_timestep=500
 # nsteps = 50000
@@ -46,8 +47,8 @@ env.post_init_stuff(max_env_timestep=150, do_rendering=True)
 model = ppo2.learn(network='mlp',
                    env=env,
                    save_interval=100,
-                   total_timesteps=5000,
-                   nsteps=150,
+                   total_timesteps=300 * 50000,
+                   nsteps=50000,
                    nminibatches=1,
                    num_layers=2,
                    num_hidden=64,
