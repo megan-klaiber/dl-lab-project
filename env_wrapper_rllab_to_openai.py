@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 from curriculum.envs.maze.point_maze_env import PointMazeEnv
 from gym.spaces import Box
@@ -12,6 +13,9 @@ import time
 class WrappedPointMazeEnv(PointMazeEnv):
 
     def __init__(self):
+        # from curriculum.envs.base import FixedStateGenerator
+        # fixed_goal_generator = FixedStateGenerator(state=(4, 4))
+        # super().__init__(coef_inner_rew=1.0, maze_id=11, goal_generator=fixed_goal_generator)
         super().__init__(coef_inner_rew=1.0, maze_id=11)
         self.num_envs = 1
         self.max_env_timestep = 500
@@ -25,17 +29,17 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.eval_results = []
         # intialize start state lists
         # first initialize curriculum_starts with states close to the goal state
-        self.curriculum_starts = self.sample_nearby([self.wrapper_env.current_goal])
-        self.render = False
+        self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
+        self.do_rendering = False
 
 
     def post_init_stuff(self, max_env_timestep, fixed_restart_state, eval_runs=10,
-                        sampling_method='good_starts', render=False):
+                        sampling_method='good_starts', do_rendering=False):
         self.max_env_timestep = max_env_timestep
         self.fixed_restart_state = fixed_restart_state
         self.eval_runs = eval_runs
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
-        self.render = render
+        self.do_rendering = do_rendering
 
 
     @property
@@ -50,8 +54,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
     def step(self, actions, train=True):
         obs, rewards, dones, infos = super().step(actions)
-        if self.render:
-            env.render()
+        if self.do_rendering:
+            self.render()
             timestep = 0.01
             speedup = 5
             time.sleep(timestep / speedup)
@@ -83,43 +87,43 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return obs, rewards, dones, infos
 
     def sample_nearby(self, states, n_new=200, variance=0.5, t_b=50, M=1000):
-    """
-        n_new: number of sampled starts in the ned
-        t_b:   horizon of one trajectory
-        M:     number of state list after adding starts
-    """
-    # possibly add: radius which tests if sampled states are in a given
-    # radius around the sampled start state or around the goal?
+        """
+            n_new: number of sampled starts in the ned
+            t_b:   horizon of one trajectory
+            M:     number of state list after adding starts
+        """
+        # possibly add: radius which tests if sampled states are in a given
+        # radius around the sampled start state or around the goal?
 
-    starts = np.array(states)
-    if len(starts) == 1:
-        print('Only one state in starts')
-        ultimate_goal = starts[0]
-    while(len(starts) < M):
-        # number of starts given by first dimension of starts
-        # num_starts = starts.shape[0]
-        # s_0 = starts[np.random.choice(num_starts),...]
-        s_0 = random.choice(starts)
-        # print('s_0:',s_0)
-        # print('Start state equals ultimate goal:', s_0==ultimate_goal)
-        env.reset(init_state=s_0)
-        for i in range(t_b):
-            a = np.random.normal(scale=variance, size=env.action_dim)
-            # only want the current observation
-            _obs, _rew, _done, _env_info = super().env.step(a)
-            # only want the start state part of the current state
-            s_1 = env.start_observation.reshape(1,-1)
-            starts = np.append(starts, s_1, axis=0)
-            env.render()
-            timestep = 0.01
-            speedup = 1
-            time.sleep(timestep / speedup)
-            # rllab also tested if the exploration led through the goal state
-            # do not see why this is necessary atm
+        starts = np.array(states)
+        if len(starts) == 1:
+            print('Only one state in starts')
+            ultimate_goal = starts[0]
+        while(len(starts) < M):
+            # number of starts given by first dimension of starts
+            # num_starts = starts.shape[0]
+            # s_0 = starts[np.random.choice(num_starts),...]
+            s_0 = random.choice(starts)
+            # print('s_0:',s_0)
+            # print('Start state equals ultimate goal:', s_0==ultimate_goal)
+            super().reset(init_state=s_0)
+            for i in range(t_b):
+                a = np.random.normal(scale=variance, size=self.action_dim)
+                # only want the current observation
+                _obs, _rew, _done, _env_info = super().step(a)
+                # only want the start state part of the current state
+                s_1 = self.get_current_obs()[:2]
+                starts = np.append(starts, s_1, axis=0)
+                self.render()
+                timestep = 0.01
+                speedup = 1
+                time.sleep(timestep / speedup)
+                # rllab also tested if the exploration led through the goal state
+                # do not see why this is necessary atm
 
-    # now sample from the M start states
-    new_starts = sample_n(starts, n_new)
-    return new_starts
+        # now sample from the M start states
+        new_starts = sample_n(starts, n_new)
+        return new_starts
 
     def reset(self, state=None, train=True):
         if state is not None:
@@ -141,8 +145,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
         sample_cnt = 0
         while True:
             sample_cnt += 1
-            s = [np.random.uniform(low=-5, high=5),np.random.uniform(low=-5, high=5))
-            if self.env.is_feasible(s):
+            s = [np.random.uniform(low=-5, high=5),np.random.uniform(low=-5, high=5)]
+            if self.is_feasible(s):
                 print('Samples until feasible:', sample_cnt)
                 return s
 
