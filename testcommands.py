@@ -31,10 +31,13 @@ import time
 import numpy as np
 import tensorflow as tf
 import os
+import random
 
 from baselines.ppo2 import ppo2
 from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
 
+random.seed(1)
+np.random.seed(1)
 
 env = WrappedPointMazeEnv()
 # Final configuration parameters:
