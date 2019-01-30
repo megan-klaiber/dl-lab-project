@@ -49,7 +49,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.steps_per_curriculum = steps_per_curriculum
 
         if self.sampling_method != 'uniform':
+            # create starts near goal
             self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
+            self.all_starts = self.curriculum_starts
             self.start_counts = np.zeros(self.curriculum_starts.shape[0])
             self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
 
@@ -79,19 +81,36 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 print("self.global_train_steps / self.steps_per_curriculum: {0}".format(
                         self.global_train_steps / self.steps_per_curriculum)
                     )
+            # check if it's time for a new start-state distribution
             if (self.global_train_steps % self.steps_per_curriculum == 0) \
                and self.sampling_method != 'uniform':
                 # find good starts
-                goal_reach_frequencies = self.goal_counts / self.start_counts
+                # if we want to keep the starts that have not been used before,
+                # change out to np.ones_like(self.goal_counts) * 0.5
+                goal_reach_frequencies = np.divide(self.goal_counts,
+                                                   self.start_counts,
+                                                   out=np.zeros_like(self.goal_counts),
+                                                   where=self.start_counts!=0)
+                if self.verbose:
+                    print('Frequencies with which goal is reached:')
+                    print(goal_reach_frequencies)
                 if self.sampling_method == 'all_previous':
                     starts = self.curriculum_starts
                 else:
+                    # line 5 in for loop
                     starts = self.good_starts(self.curriculum_starts, goal_reach_frequencies)
+                # line 6 (last line) in for loop
+                self.all_starts = np.concatenate((self.all_starts,starts))
+                # first line in for loop
                 self.curriculum_starts = self.sample_nearby(starts)
+                # line 2 in for loop
+                self.curriculum_starts = np.concatenate((self.curriculum_starts,
+                                                         self.sample_n(self.all_starts, 100)))
 
+                # reset the counts of how often a start state is used and how often the goal is reached
                 self.start_counts = np.zeros(self.curriculum_starts.shape[0])
                 self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
-            
+
         self.episodes_steps[-1] += 1
         # print(dones[0])
         if dones or (self.episodes_steps[-1] >= self.max_env_timestep):
@@ -111,11 +130,19 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return obs, rewards, dones, infos
 
     def good_starts(self, states, success_freq):
-        starts_good = np.array([states[i]  for i in range(len(states))
+        starts = np.array([states[i] for i in range(len(states))
                         if (success_freq[i] > 0.1 and success_freq[i] < 0.9)])
         if self.verbose:
-            print('good starts:', starts_good)
-        return starts_good
+            print('Number of good starts', len(starts))
+        if len(starts) == 0:
+            easy_starts = np.array([states[i] for i in range(len(states))
+                            if success_freq[i] >= 0.9])
+            starts = easy_starts
+            if len(easy_starts) == 0:
+                if self.verbose:
+                    print('No good or easy starts. Using starts from las iteration again.')
+                return states
+        return starts
 
 
     def sample_nearby(self, states, n_new=200, variance=0.5, t_b=50, M=1000):
