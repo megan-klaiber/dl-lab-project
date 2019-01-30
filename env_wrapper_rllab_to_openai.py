@@ -36,9 +36,12 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.R_max = 0.9
         self.R_min = 0.1
 
+        self.verbose = False
+
 
     def post_init_stuff(self, max_env_timestep, eval_runs=10,
-                        sampling_method='uniform', do_rendering=False, steps_per_curriculum = 50000):
+                        sampling_method='uniform', do_rendering=False, steps_per_curriculum = 50000,
+                        verbose=False):
         self.max_env_timestep = max_env_timestep
         self.eval_runs = eval_runs
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
@@ -49,6 +52,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
             self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
             self.start_counts = np.zeros(self.curriculum_starts.shape[0])
             self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
+
+        self.verbose = verbose
 
 
     @property
@@ -70,6 +75,10 @@ class WrappedPointMazeEnv(PointMazeEnv):
             # time.sleep(timestep / speedup)
         if train:
             self.global_train_steps += 1
+            if (self.global_train_steps % self.steps_per_curriculum == 0):
+                print("self.global_train_steps / self.steps_per_curriculum: {0}".format(
+                        self.global_train_steps / self.steps_per_curriculum)
+                    )
             if (self.global_train_steps % self.steps_per_curriculum == 0) \
                and self.sampling_method != 'uniform':
                 # find good starts
@@ -104,7 +113,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
     def good_starts(self, states, success_freq):
         starts_good = np.array([states[i]  for i in range(len(states))
                         if (success_freq[i] > 0.1 and success_freq[i] < 0.9)])
-        print('good starts:', starts_good)
+        if self.verbose:
+            print('good starts:', starts_good)
         return starts_good
 
 
@@ -174,7 +184,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
             sample_cnt += 1
             s = [np.random.uniform(low=-5, high=5),np.random.uniform(low=-5, high=5)]
             if self.is_feasible(s):
-                print('Samples until feasible:', sample_cnt)
+                if self.verbose:
+                    print('Samples until feasible:', sample_cnt)
                 return s
 
     def sample_curriculum(self):
@@ -187,7 +198,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
     def evaluate(self, model):
         # For using this method add add "runner.obs[:] = env.evaluate(model)" in ppo2.py.
 
-        print("Evaluation start ... ")
+        print("\n\nEvaluation started ... ")
         current_eval_index = len(self.eval_results)
         current_eval_results = []
         for i in range(self.eval_runs):
@@ -203,7 +214,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
             else:
                 current_eval_results.append(0)
         self.eval_results[current_eval_index] = current_eval_results
-        print(" ... Evaluation finished")
+        print(" ... Evaluation finished\n\n")
         obs = self.reset(train=True)
         return obs
 
