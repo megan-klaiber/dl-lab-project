@@ -18,7 +18,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         # from curriculum.envs.base import FixedStateGenerator
         # fixed_goal_generator = FixedStateGenerator(state=(4, 4))
         # super().__init__(coef_inner_rew=1.0, maze_id=11, goal_generator=fixed_goal_generator)
-        super().__init__(coef_inner_rew=1.0, maze_id=11)
+        super().__init__(coef_inner_rew=1.0, maze_id=11, reward_dist_threshold=0.5)
         self.num_envs = 1
         self.max_env_timestep = 500
         self.episodes_steps = []
@@ -39,6 +39,11 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.verbose = False
         self.goal = (4, 4)
         result = super().reset(goal=self.goal)
+        
+        tmp = np.copy(self.wrapped_env.model.geom_size)
+        tmp[-1,0] = 0.4
+        self.wrapped_env.model.geom_size = tmp
+
 
     def post_init_stuff(self, max_env_timestep, eval_runs=10,
                         sampling_method='uniform', do_rendering=False, steps_per_curriculum = 50000,
