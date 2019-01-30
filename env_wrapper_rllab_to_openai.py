@@ -33,6 +33,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
         self.steps_per_curriculum = 50000
         self.do_rendering = False
+        self.R_max = 0.9
+        self.R_min = 0.1
 
 
     def post_init_stuff(self, max_env_timestep, eval_runs=10,
@@ -67,18 +69,20 @@ class WrappedPointMazeEnv(PointMazeEnv):
             # speedup = 5
             # time.sleep(timestep / speedup)
         if train:
+            self.global_train_steps += 1
             if (self.global_train_steps % self.steps_per_curriculum == 0) \
                and self.sampling_method != 'uniform':
                 # find good starts
                 goal_reach_frequencies = self.goal_counts / self.start_counts
-                # good_starts = ....
-                starts = self.curriculum_starts
-                self.curriculum_starts = self.sample_nearby(starts) # or good_starts...
+                if self.sampling_method == 'all_previous':
+                    starts = self.curriculum_starts
+                else:
+                    starts = self.good_starts(self.curriculum_starts, goal_reach_frequencies)
+                self.curriculum_starts = self.sample_nearby(starts)
 
                 self.start_counts = np.zeros(self.curriculum_starts.shape[0])
                 self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
-            self.global_train_steps += 1
-
+            
         self.episodes_steps[-1] += 1
         # print(dones[0])
         if dones or (self.episodes_steps[-1] >= self.max_env_timestep):
@@ -97,6 +101,13 @@ class WrappedPointMazeEnv(PointMazeEnv):
         infos = {}   # Caused problems in runner.py, with part "for info in infos: ..."
         return obs, rewards, dones, infos
 
+    def good_starts(self, states, success_freq):
+        starts_good = np.array([states[i]  for i in range(len(states))
+                        if (success_freq[i] > 0.1 and success_freq[i] < 0.9)])
+        print('good starts:', starts_good)
+        return starts_good
+
+
     def sample_nearby(self, states, n_new=200, variance=0.5, t_b=50, M=1000):
         """
             n_new: number of sampled starts in the ned
@@ -107,9 +118,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         # radius around the sampled start state or around the goal?
 
         starts = np.array(states)
-        if len(starts) == 1:
-            print('Only one state in starts')
-            ultimate_goal = starts[0]
+        # if len(starts) == 1:
+        #     print('Only one state in starts')
+        #     ultimate_goal = starts[0]
         while(len(starts) < M):
             # number of starts given by first dimension of starts
             # num_starts = starts.shape[0]
