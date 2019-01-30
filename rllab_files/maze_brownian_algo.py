@@ -1,5 +1,5 @@
 import matplotlib
-from curriculum.state.constant_baseline import ConstantBaseline
+#from curriculum.state.constant_baseline import ConstantBaseline
 
 matplotlib.use('Agg')
 import os
@@ -78,12 +78,12 @@ def run_task(v):
         init_std=v['policy_init_std'],
     )
 
-    if v['constant_baseline']:
-        logger.log("Using constant baseline")
-        baseline = ConstantBaseline(env_spec=env.spec, value=1.0)
-    else:
-        logger.log("Using linear baseline")
-        baseline = LinearFeatureBaseline(env_spec=env.spec)
+    #if v['constant_baseline']:
+    #    logger.log("Using constant baseline")
+    #    baseline = ConstantBaseline(env_spec=env.spec, value=1.0)
+    #else:
+    logger.log("Using linear baseline")
+    baseline = LinearFeatureBaseline(env_spec=env.spec)
 
     # initialize all logging arrays on itr0
     outer_iter = 0

@@ -17,7 +17,7 @@ from curriculum.experiments.starts.maze.maze_brownian_algo import run_task
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ec2', '-e', action='store_true', default=True, help="add flag to run in ec2")
+    parser.add_argument('--ec2', '-e', action='store_true', default=False, help="add flag to run in ec2")
     parser.add_argument('--clone', '-c', action='store_true', default=False,
                         help="add flag to copy file and checkout current")
     parser.add_argument('--local_docker', '-d', action='store_true', default=False,
@@ -69,9 +69,9 @@ if __name__ == '__main__':
            lambda maze_id: [4] if maze_id == 0 else [7])  # this will be used also as bound of the state_space
     vg.add('goal_center', lambda maze_id: [(2, 2)] if maze_id == 0 else [(0, 0)])
     # brownian params
-    vg.add('seed_with', ['on_policy', 'only_goods', 'all_previous'])  # good from brown, onPolicy, previousBrown (ie no good)
+    vg.add('seed_with', ['only_goods', 'all_previous'])  # good from brown, onPolicy, previousBrown (ie no good)
     vg.add('brownian_variance', [1])
-    vg.add('brownian_horizon', [50, 100])
+    vg.add('brownian_horizon', [50])
     # goal-algo params
     vg.add('use_trpo_paths', [True])
     vg.add('min_reward', [0.1])
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     vg.add('num_old_starts', [100])
     # sampling params
     vg.add('horizon', lambda maze_id: [200] if maze_id == 0 else [500])
-    vg.add('outer_iters', lambda maze_id: [200] if maze_id == 0 else [1000])
+    vg.add('outer_iters', lambda maze_id: [200] if maze_id == 0 else [400])
     vg.add('inner_iters', [5])  # again we will have to divide/adjust the
     vg.add('pg_batch_size', [20000])
     # policy initialization
@@ -99,9 +99,9 @@ if __name__ == '__main__':
     vg.add('learn_std', [False])
     vg.add('adaptive_std', [False])
     vg.add('discount', [0.995])
-    vg.add('constant_baseline', [True, False])
+    #vg.add('constant_baseline', [True, False])
 
-    vg.add('seed', range(100, 700, 100))
+    vg.add('seed', range(100, 600, 100))
 
     # # gan_configs
     # vg.add('GAN_batch_size', [128])  # proble with repeated name!!
