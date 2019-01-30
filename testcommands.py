@@ -54,7 +54,7 @@ eval_runs = 2
 max_env_timestep = 150
 do_rendering = True
 sampling_method = 'uniform'
-steps_per_curriculum = 10000
+steps_per_curriculum = 1500
 nsteps = steps_per_curriculum
 total_timesteps = 3 * nsteps
 save_interval = 2
@@ -86,6 +86,13 @@ model.save(model_file_path)
 # env.reset()
 # for i in range(250):
 #      env.render()
+
+# env.reset()
+# for i in range(250):
+#     obs = env.get_current_obs(); print("obs: ", obs)
+#     s = env.step(np.array([1, 0])); print("s: ", s)
+#     env.render()
+
 
 # env.reset()
 # for i in range(250):

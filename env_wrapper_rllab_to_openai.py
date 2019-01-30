@@ -37,7 +37,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.R_min = 0.1
 
         self.verbose = False
-
+        self.goal = (4, 4)
+        result = super().reset(goal=self.goal)
 
     def post_init_stuff(self, max_env_timestep, eval_runs=10,
                         sampling_method='uniform', do_rendering=False, steps_per_curriculum = 50000,
@@ -165,13 +166,13 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
     def reset(self, state=None, train=True):
         if state is not None:
-            result = super().reset(state)
+            result = super().reset(state, goal=self.goal)
         elif not train or self.sampling_method == 'uniform':
-            result = super().reset(self.sample_uniform())
+            result = super().reset(self.sample_uniform(), goal=self.goal)
         elif train:
-            result = super().reset(self.sample_curriculum())
+            result = super().reset(self.sample_curriculum(), goal=self.goal)
         else:
-            result = super().reset()
+            result = super().reset(goal=self.goal)
 
         self.episodes_steps.append(0)
 
