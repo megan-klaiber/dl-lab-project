@@ -171,7 +171,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
             s_0 = random.choice(starts)
             # print('s_0:',s_0)
             # print('Start state equals ultimate goal:', s_0==ultimate_goal)
-            super().reset(init_state=s_0)
+            super().reset(init_state=s_0, goal=self.goal)
             for i in range(t_b):
                 a = np.random.normal(scale=variance, size=self.action_dim)
                 # only want the current observation
