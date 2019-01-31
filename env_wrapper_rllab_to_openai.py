@@ -39,7 +39,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.verbose = False
         self.goal = (4, 4)
         result = super().reset(goal=self.goal)
-        
+
         tmp = np.copy(self.wrapped_env.model.geom_size)
         tmp[-1,0] = 0.4
         self.wrapped_env.model.geom_size = tmp
@@ -89,8 +89,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
         obs, rewards, dones, infos = super().step(actions)
         if self.do_rendering:
             self.render()
-            # timestep = 0.01
-            # speedup = 5
+            # timestep = 0.05
+            # speedup = 1
             # time.sleep(timestep / speedup)
         if train:
             self.global_train_steps += 1
@@ -109,8 +109,16 @@ class WrappedPointMazeEnv(PointMazeEnv):
                                                    out=np.zeros_like(self.goal_counts),
                                                    where=self.start_counts!=0)
                 if self.verbose:
-                    print('Frequencies with which goal is reached:')
-                    print(goal_reach_frequencies)
+                    print('Number of starts sampled from:', len(goal_reach_frequencies))
+                    if np.sum(goal_reach_frequencies > 1) >= 1:
+                        print('Goal reach frequencies with values bigger 1!')
+                        print(goal_reach_frequencies)
+                    # print('Start frequencies:')
+                    # print(self.start_counts)
+                    # print('Goal frequencies:')
+                    # print(self.goal_counts)
+                    # print('Frequencies with which goal is reached:')
+                    # print(goal_reach_frequencies)
                 if self.sampling_method == 'all_previous':
                     starts = self.curriculum_starts
                 else:
@@ -119,7 +127,11 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # line 6 (last line) in for loop
                 self.all_starts = np.concatenate((self.all_starts,starts))
                 # first line in for loop
+                if self.verbose:
+                    print('Now sampling new starts...')
                 self.curriculum_starts = self.sample_nearby(starts)
+                if self.verbose:
+                    print('...finished sampling new starts')
                 # line 2 in for loop
                 self.curriculum_starts = np.concatenate((self.curriculum_starts,
                                                          self.sample_n(self.all_starts, 100)))
@@ -127,6 +139,12 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # reset the counts of how often a start state is used and how often the goal is reached
                 self.start_counts = np.zeros(self.curriculum_starts.shape[0])
                 self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
+                # also make a reset to one of the new starts (only do it here if it's not done
+                # automatically later in the next if)
+                if not (dones or (self.episodes_steps[-1] >= self.max_env_timestep)):
+                    obs = self.reset(train=train)
+                if self.verbose:
+                    print('Start counts and goal counts reset.')
 
         self.episodes_steps[-1] += 1
         # print(dones[0])
@@ -135,6 +153,10 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.episodes_goal_reached.append(True)
                 if train and self.sampling_method != 'uniform':
                     self.goal_counts[self.current_start] += 1
+                    # if self.verbose:
+                    #     print('Goal reached, goal_count:',self.current_start,' +1')
+                    #     print('Goal counts now:')
+                    #     print(self.goal_counts)
             else:
                 self.episodes_goal_reached.append(False)
             # Reset env when goal is reached or max timesteps is reached.
@@ -190,9 +212,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # only want the start state part of the current state
                 s_1 = self.get_current_obs()[:2].reshape(1, -1)
                 starts = np.append(starts, s_1, axis=0)
-                #self.render()
-                timestep = 0.01
-                speedup = 1
+                self.render()
+                # timestep = 0.02
+                # speedup = 1
                 # time.sleep(timestep / speedup)
                 # rllab also tested if the exploration led through the goal state
                 # do not see why this is necessary atm
@@ -228,21 +250,30 @@ class WrappedPointMazeEnv(PointMazeEnv):
             sample_cnt += 1
             s = [np.random.uniform(low=-5, high=5),np.random.uniform(low=-5, high=5)]
             if self.is_feasible(s):
-                if self.verbose:
-                    print('Samples until feasible:', sample_cnt)
+                # if self.verbose:
+                    # print('Samples until feasible:', sample_cnt)
                 return s
 
     def sample_curriculum(self):
         # sample from the current start state distribution according to the curriculum
+        # if self.verbose:
+        #     print('Now sampling from curriculum')
         start_ind = np.random.choice(self.curriculum_starts.shape[0])
         self.current_start = start_ind
         self.start_counts[start_ind] += 1
+        # if self.verbose:
+            # print('Start state sampled from curriculum:', self.curriculum_starts[start_ind], 'index:', start_ind)
+            # print('Sampled new start state:', start_ind, ' +1')
+            # print('Start counts now:')
+            # print(self.start_counts)
         return self.curriculum_starts[start_ind]
 
     def evaluate(self, model):
         # For using this method add "runner.obs[:] = env.evaluate(model)" in the update loop in ppo2.py
 
         print("\n\nEvaluation started ... ")
+        # remove current start from self.start_counts since the env is reset for evaluation
+        self.start_counts[self.current_start] -= 1
         current_eval_index = len(self.eval_results)
         current_eval_results = []
         for i in range(self.eval_runs):

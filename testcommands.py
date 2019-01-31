@@ -53,14 +53,14 @@ env = WrappedPointMazeEnv()
 
 
 # Parameters for testing for short runs:
-eval_runs = 2
-max_env_timestep = 150
+eval_runs = 10
+max_env_timestep = 500
 do_rendering = True
-sampling_method = 'uniform'
-steps_per_curriculum = 1500
+sampling_method = 'good_starts'
+steps_per_curriculum = 10000
 nsteps = steps_per_curriculum
-total_timesteps = 3 * nsteps
-save_interval = 2
+total_timesteps = 300 * nsteps
+save_interval = 10
 verbose = True
 
 env.post_init_stuff(eval_runs=eval_runs, max_env_timestep=max_env_timestep, do_rendering=do_rendering,
@@ -89,13 +89,6 @@ model.save(model_file_path)
 # env.reset()
 # for i in range(250):
 #      env.render()
-
-# env.reset()
-# for i in range(250):
-#     obs = env.get_current_obs(); print("obs: ", obs)
-#     s = env.step(np.array([1, 0])); print("s: ", s)
-#     env.render()
-
 
 # env.reset()
 # for i in range(250):
