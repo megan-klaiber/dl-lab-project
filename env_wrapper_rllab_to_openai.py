@@ -190,7 +190,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # only want the start state part of the current state
                 s_1 = self.get_current_obs()[:2].reshape(1, -1)
                 starts = np.append(starts, s_1, axis=0)
-                self.render()
+                #self.render()
                 timestep = 0.01
                 speedup = 1
                 # time.sleep(timestep / speedup)
@@ -240,7 +240,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return self.curriculum_starts[start_ind]
 
     def evaluate(self, model):
-        # For using this method add add "runner.obs[:] = env.evaluate(model)" in ppo2.py.
+        # For using this method add "runner.obs[:] = env.evaluate(model)" in the update loop in ppo2.py
 
         print("\n\nEvaluation started ... ")
         current_eval_index = len(self.eval_results)
@@ -263,11 +263,12 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return obs
 
     def save(self, file_name="results.json"):
-        if not os.path.exists("results"):
-            os.mkdir("results")
+        #if not os.path.exists("results"):
+        #    os.mkdir("results")
 
-        fname = os.path.join("results", file_name)
+        #fname = os.path.join("results", 'results.json')
 
-        fh = open(fname, "w")
+        fh = open(file_name, "w")
         json.dump(self.eval_results, fh)
         fh.close()
+        print('Saving evaluation to: ', file_name)
