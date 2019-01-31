@@ -17,8 +17,9 @@ from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
 # steps_per_curriculum = 50000
 # nsteps = 50000
 # total_timesteps = 400 * nsteps
-# save_interval = 100
+# save_interval = 0
 # verbose = False
+# sample_on_goal_area = True
 
 # Parameters for testing for short runs:
 # eval_runs = 2
@@ -30,21 +31,22 @@ from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
 # total_timesteps = 3 * nsteps
 # save_interval = 2
 # verbose = True
+# sample_on_goal_area = True
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--eval_runs', default=2, type=int, nargs=1, help='How many runs for evaluation during training')
-    parser.add_argument('--max_env_timestep', default=5, type=int, nargs=1, help='')
-    parser.add_argument('--do_rendering', default=False, type=bool, nargs=1, help='')
-    parser.add_argument('--sampling_method', default='uniform', type=str, nargs=1, help='')
-    parser.add_argument('--steps_per_curriculum', default=5, type=int, nargs=1, help='')
-    parser.add_argument('--nsteps', default=2, type=int, nargs=1, help='')
-    parser.add_argument('--total_timesteps', default=2, type=int, nargs=1, help='outer iters / number multiply with nsteps')
-    parser.add_argument('--save_interval', default=0, type=int, nargs=1, help='')
-    parser.add_argument('--verbose', default=False, type=bool, nargs=1, help='pritn more information')
-    parser.add_argument('--seed', default=42, type=int, nargs=1, help='random seed')
-    parser.add_argument('--sample_on_goal_area', default=True, type=bool, nargs=1, help='')
+    parser.add_argument('--eval_runs', default=10, type=int, help='How many runs for evaluation during training')
+    parser.add_argument('--max_env_timestep', default=500, type=int, help='')
+    parser.add_argument('--do_rendering', default=False, type=bool, help='')
+    parser.add_argument('--sampling_method', default='uniform', type=str, help='')
+    parser.add_argument('--steps_per_curriculum', default=50000, type=int, help='')
+    parser.add_argument('--nsteps', default=50000, type=int, help='')
+    parser.add_argument('--total_timesteps', default=400, type=int, help='outer iters / number multiply with nsteps')
+    parser.add_argument('--save_interval', default=0, type=int, help='')
+    parser.add_argument('--verbose', default=False, type=bool, help='print more information')
+    parser.add_argument('--seed', default=42, type=int, help='random seed')
+    parser.add_argument('--sample_on_goal_area', default=True, type=bool, help='')
     args = parser.parse_args()
 
     # get all arguments
@@ -90,7 +92,7 @@ if __name__ == "__main__":
     # get datetime
     experiment_date = datetime.datetime.today().strftime(
         "%Y-%m-%d_%H-%M-%S")
-    experiment_dir = os.path.join('results',"ppo_maze_{}".format(experiment_date))
+    experiment_dir = os.path.join('results',"ppo_maze_{}_{}_{}".format(experiment_date, sampling_method, seed))
     os.mkdir(experiment_dir)
 
     # to use evaluation see instructions in env_wrapper_rllab_to_openai.evaluate
