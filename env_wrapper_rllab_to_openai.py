@@ -43,26 +43,37 @@ class WrappedPointMazeEnv(PointMazeEnv):
         tmp = np.copy(self.wrapped_env.model.geom_size)
         tmp[-1,0] = 0.4
         self.wrapped_env.model.geom_size = tmp
+        self.sample_on_goal_area = True
 
 
     def post_init_stuff(self, max_env_timestep, eval_runs=10,
                         sampling_method='uniform', do_rendering=False, steps_per_curriculum = 50000,
-                        verbose=False):
+                        verbose=False, sample_on_goal_area=True):
         self.max_env_timestep = max_env_timestep
         self.eval_runs = eval_runs
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
         self.do_rendering = do_rendering
         self.steps_per_curriculum = steps_per_curriculum
+        self.verbose = verbose
+        self.sample_on_goal_area = sample_on_goal_area
 
         if self.sampling_method != 'uniform':
             # create starts near goal
-            self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
+            if self.sample_on_goal_area:
+                part_of_M = 100
+                length = np.random.uniform(0, 0.5, part_of_M)
+                angle = np.pi * np.random.uniform(0, 2, part_of_M)
+                x = self.wrapped_env.current_goal[0] + length * np.cos(angle)
+                y = self.wrapped_env.current_goal[1] + length * np.sin(angle)
+                starts_in_goal_area = list(zip(x, y))
+                if self.verbose:
+                    print("starts_in_goal_area:\n", starts_in_goal_area)
+                self.curriculum_starts = self.sample_nearby(starts_in_goal_area)
+            else:
+                self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
             self.all_starts = self.curriculum_starts
             self.start_counts = np.zeros(self.curriculum_starts.shape[0])
             self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
-
-        self.verbose = verbose
-
 
     @property
     def observation_space(self):
