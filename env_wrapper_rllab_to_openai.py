@@ -113,10 +113,6 @@ class WrappedPointMazeEnv(PointMazeEnv):
                     if np.sum(goal_reach_frequencies > 1) >= 1:
                         print('Goal reach frequencies with values bigger 1!')
                         print(goal_reach_frequencies)
-                    # print('Start frequencies:')
-                    # print(self.start_counts)
-                    # print('Goal frequencies:')
-                    # print(self.goal_counts)
                     # print('Frequencies with which goal is reached:')
                     # print(goal_reach_frequencies)
                 if self.sampling_method == 'all_previous':
@@ -143,8 +139,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # automatically later in the next if)
                 if not (dones or (self.episodes_steps[-1] >= self.max_env_timestep)):
                     obs = self.reset(train=train)
-                if self.verbose:
-                    print('Start counts and goal counts reset.')
+                # if self.verbose:
+                #     print('Start counts and goal counts reset.')
 
         self.episodes_steps[-1] += 1
         # print(dones[0])
@@ -155,8 +151,6 @@ class WrappedPointMazeEnv(PointMazeEnv):
                     self.goal_counts[self.current_start] += 1
                     # if self.verbose:
                     #     print('Goal reached, goal_count:',self.current_start,' +1')
-                    #     print('Goal counts now:')
-                    #     print(self.goal_counts)
             else:
                 self.episodes_goal_reached.append(False)
             # Reset env when goal is reached or max timesteps is reached.
@@ -196,14 +190,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         starts = np.array(states)
         # if len(starts) == 1:
         #     print('Only one state in starts')
-        #     ultimate_goal = starts[0]
         while(len(starts) < M):
-            # number of starts given by first dimension of starts
-            # num_starts = starts.shape[0]
-            # s_0 = starts[np.random.choice(num_starts),...]
             s_0 = random.choice(starts)
-            # print('s_0:',s_0)
-            # print('Start state equals ultimate goal:', s_0==ultimate_goal)
+
             super().reset(init_state=s_0, goal=self.goal)
             for i in range(t_b):
                 a = np.random.normal(scale=variance, size=self.action_dim)
@@ -256,16 +245,10 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
     def sample_curriculum(self):
         # sample from the current start state distribution according to the curriculum
-        # if self.verbose:
-        #     print('Now sampling from curriculum')
         start_ind = np.random.choice(self.curriculum_starts.shape[0])
         self.current_start = start_ind
         self.start_counts[start_ind] += 1
-        # if self.verbose:
-            # print('Start state sampled from curriculum:', self.curriculum_starts[start_ind], 'index:', start_ind)
-            # print('Sampled new start state:', start_ind, ' +1')
-            # print('Start counts now:')
-            # print(self.start_counts)
+
         return self.curriculum_starts[start_ind]
 
     def evaluate(self, model):
