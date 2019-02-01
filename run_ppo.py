@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument('--sampling_method', default='uniform', type=str, help='')
     parser.add_argument('--steps_per_curriculum', default=50000, type=int, help='')
     parser.add_argument('--nsteps', default=50000, type=int, help='')
-    parser.add_argument('--outer_iter', default=400, type=int, help='outer iters / number multiply with nsteps')
+    parser.add_argument('--outer_iter', default=400, type=int, help='outer iters')
     parser.add_argument('--save_interval', default=0, type=int, help='')
     parser.add_argument('--verbose', default=False, action='store_true', help='print more information')
     parser.add_argument('--seed', default=42, type=int, help='random seed')
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     sampling_method = args.sampling_method
     steps_per_curriculum = args.steps_per_curriculum
     nsteps = args.nsteps
-    total_timesteps = args.outer_iter * nsteps
+    total_timesteps = args.outer_iter * steps_per_curriculum
     save_interval = args.save_interval
     verbose = args.verbose
     seed = args.seed
@@ -71,7 +71,7 @@ if __name__ == "__main__":
                   "\tsteps_per_curriculum: {}\n"
                   "\tnsteps: {}\n"
                   "\touter_iter: {}\n"
-                  "\ttotal_timesteps: {}\n"
+                  "\ttotal_timesteps: {} (= outer_iter * steps_per_curriculum)\n"
                   "\tsave_interval: {}\n"
                   "\tverbose: {}\n"
                   "\tseed: {}\n"
@@ -130,8 +130,9 @@ if __name__ == "__main__":
                        nminibatches=1,
                        num_layers=2,
                        num_hidden=64,
-                       activation=tf.nn.relu)
+                       activation=tf.nn.relu,
+                       gamma=0.998)
 
     # Last evaluation run, including saving the evaluation results and the model.
-    env.evaluate(model)
+    env.evaluate()
 

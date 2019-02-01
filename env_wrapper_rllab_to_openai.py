@@ -84,6 +84,10 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
     def step(self, actions):
 
+        if (self.global_train_steps % self.steps_per_curriculum == 0):
+            print("self.global_train_steps / self.steps_per_curriculum: {0}".format(
+                            self.global_train_steps / self.steps_per_curriculum))
+            self.evaluate()
         self.global_train_steps += 1
 
         if (self.done_in_previous_step or (self.episodes_steps[-1] >= self.max_env_timestep)) or \
@@ -94,27 +98,23 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.goal_counts[self.current_start] += 1
             else:
                 self.episodes_goal_reached.append(False)
-
-            if (self.global_train_steps % self.steps_per_curriculum == 0):
-                print("self.global_train_steps / self.steps_per_curriculum: {0}".format(
-                                self.global_train_steps / self.steps_per_curriculum))
-            
+                
             if (self.global_train_steps % self.steps_per_curriculum == 0) \
                 and self.sampling_method != 'uniform':
                 # find good starts
                 # if we want to keep the starts that have not been used before,
                 # change out to np.ones_like(self.goal_counts) * 0.5
                 goal_reach_frequencies = np.divide(self.goal_counts,
-                                                    self.start_counts,
-                                                    out=np.zeros_like(self.goal_counts),
-                                                    where=self.start_counts!=0)
+                                                   self.start_counts,
+                                                   out=np.ones_like(self.goal_counts) * np.NaN,
+                                                   where=self.start_counts!=0)
                 if self.verbose:
                     print('Number of starts sampled from:', len(goal_reach_frequencies))
-                    if np.sum(goal_reach_frequencies > 1) >= 1:
-                        print('Goal reach frequencies with values bigger 1!')
-                        print(goal_reach_frequencies)
-                    # print('Frequencies with which goal is reached:')
+                    # if np.sum(goal_reach_frequencies > 1) >= 1:
+                    # print('Goal reach frequencies with values bigger 1!')
                     # print(goal_reach_frequencies)
+                    print('Frequencies with which goal is reached:')
+                    print(goal_reach_frequencies)
                 if self.sampling_method == 'all_previous':
                     starts = self.curriculum_starts
                 else:
@@ -163,6 +163,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                         if (success_freq[i] > 0.1 and success_freq[i] < 0.9)])
         if self.verbose:
             print('Number of good starts', len(starts))
+            print('Good starts: ', starts)
         if len(starts) == 0:
             easy_starts = np.array([states[i] for i in range(len(states))
                             if success_freq[i] >= 0.9])
@@ -253,8 +254,11 @@ class WrappedPointMazeEnv(PointMazeEnv):
                                       (state[1] - self.wrapped_env.current_goal[1])**2)
         return dist_to_goal_center < self.goal_radius
 
-    def evaluate(self, model):
-        # For using this method add "runner.obs[:] = env.evaluate(model)" in the update loop in ppo2.py
+    def set_model(self, model):
+        self.model = model
+
+    def evaluate(self):
+        # For using this method add "env.set_model(model)" in the update loop in ppo2.py
 
         if self.eval_runs <= 0:
             return self.get_current_obs()
@@ -273,7 +277,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
             current_eval_starts.append((obs[0], obs[1]))
             done = False
             for s in range(self.max_env_timestep):
-                actions, _, _, _ = model.step(obs)
+                actions, _, _, _ = self.model.step(obs)
                 obs, _, done, _ = super().step(actions)
                 if self.do_rendering:
                     self.render()
@@ -286,14 +290,14 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.eval_starts[current_eval_index] = current_eval_starts
         self.eval_results[current_eval_index] = current_eval_results
         print(" ... Evaluation finished. Avg of current evaluation: {0}\n".format(np.average(current_eval_results)))
-        self.save(model)
+        self.save()
         obs = self.reset(evaluate=False)
         return obs
 
-    def save(self, model):
+    def save(self):
         
         print("Saving model to:\n\t'{}'".format(self.model_file_path))
-        model.save(self.model_file_path)
+        self.model.save(self.model_file_path)
         
         print("Saving evaluations to: \n\t'{}'\n\t'{}'\n".format(self.eval_starts_file_name, self.eval_results_file_name))
 
