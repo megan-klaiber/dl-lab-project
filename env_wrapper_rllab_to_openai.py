@@ -15,35 +15,30 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.goal_radius = 0.3
         super().__init__(coef_inner_rew=1.0, maze_id=11, reward_dist_threshold=self.goal_radius)
         self.num_envs = 1
-        self.max_env_timestep = 500
         self.episodes_steps = []
         self.episodes_goal_reached = []
         # integer that saves the index of the current start during training
         self.current_start = None
         self.global_train_steps = 0
-        self.sampling_method = 'uniform'
+        self.eval_starts = {}
         self.eval_results = {}
         # intialize start state lists
         # first initialize curriculum_starts with states close to the goal state
 
-        self.steps_per_curriculum = 50000
-        self.do_rendering = False
         self.R_max = 0.9
         self.R_min = 0.1
 
-        self.verbose = False
         self.goal = (4, 4)
         result = super().reset(goal=self.goal)
 
         tmp = np.copy(self.wrapped_env.model.geom_size)
         tmp[-1,0] = self.goal_radius * 0.9
         self.wrapped_env.model.geom_size = tmp
-        self.sample_on_goal_area = True
 
 
-    def post_init_stuff(self, max_env_timestep, eval_runs=10,
-                        sampling_method='uniform', do_rendering=False, steps_per_curriculum = 50000,
-                        verbose=False, sample_on_goal_area=True):
+    def post_init(self, max_env_timestep, eval_runs, sampling_method, do_rendering,
+                steps_per_curriculum, verbose, sample_on_goal_area,
+                eval_starts_file_name, eval_results_file_name):
         self.max_env_timestep = max_env_timestep
         self.eval_runs = eval_runs
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
@@ -51,6 +46,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.steps_per_curriculum = steps_per_curriculum
         self.verbose = verbose
         self.sample_on_goal_area = sample_on_goal_area
+        self.eval_starts_file_name = eval_starts_file_name
+        self.eval_results_file_name = eval_results_file_name
 
         if self.sampling_method != 'uniform':
             # create starts near goal
@@ -250,13 +247,20 @@ class WrappedPointMazeEnv(PointMazeEnv):
     def evaluate(self, model):
         # For using this method add "runner.obs[:] = env.evaluate(model)" in the update loop in ppo2.py
 
+        if self.eval_runs <= 0:
+            return self.get_current_obs()
+
         print("\n\nEvaluation started ... ")
         # remove current start from self.start_counts since the env is reset for evaluation
-        self.start_counts[self.current_start] -= 1
+        if self.sampling_method != 'uniform':
+            self.start_counts[self.current_start] -= 1
         current_eval_index = len(self.eval_results)
+        current_eval_starts = []
         current_eval_results = []
         for i in range(self.eval_runs):
+            print("\tFinished {} of {}".format(i, self.eval_runs), end='\r')
             obs = self.reset(train=False)
+            current_eval_starts.append((obs[0], obs[1]))
             done = False
             for s in range(self.max_env_timestep):
                 actions, _, _, _ = model.step(obs)
@@ -267,19 +271,21 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 current_eval_results.append(1)
             else:
                 current_eval_results.append(0)
+        self.eval_starts[current_eval_index] = current_eval_starts
         self.eval_results[current_eval_index] = current_eval_results
         print(" ... Evaluation finished. Avg of current evaluation: {0}\n\n".format(np.average(current_eval_results)))
         self.save()
         obs = self.reset(train=True)
         return obs
 
-    def save(self, file_name="results.json"):
-        #if not os.path.exists("results"):
-        #    os.mkdir("results")
+    def save(self):
+        print("Saving evaluation to: '{}' and '{}'", self.eval_starts_file_name, self.eval_results_file_name)
 
-        #fname = os.path.join("results", 'results.json')
+        fh = open(self.eval_starts_file_name, "w")
+        json.dump(self.eval_starts, fh)
+        fh.close()
 
-        fh = open(file_name, "w")
+        fh = open(self.eval_results_file_name, "w")
         json.dump(self.eval_results, fh)
         fh.close()
-        print('Saving evaluation to: ', file_name)
+        
