@@ -195,7 +195,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 _obs, _rew, _done, _env_info = super().step(a)
                 # only want the start state part of the current state
                 s_1 = self.get_current_obs()[:2].reshape(1, -1)
-                starts = np.append(starts, s_1, axis=0)
+                if not self.is_in_goal_area(self.get_current_obs()):
+                    starts = np.append(starts, s_1, axis=0)
                 if self.do_rendering:
                     self.render()
                 # timestep = 0.02
@@ -234,7 +235,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         while True:
             sample_cnt += 1
             s = [np.random.uniform(low=-5, high=5),np.random.uniform(low=-5, high=5)]
-            if self.is_feasible(s):
+            if self.is_feasible(s) and not self.is_in_goal_area(s):
                 # if self.verbose:
                     # print('Samples until feasible:', sample_cnt)
                 return s
@@ -246,6 +247,11 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.start_counts[start_ind] += 1
 
         return self.curriculum_starts[start_ind]
+
+    def is_in_goal_area(self, state):
+        dist_to_goal_center = np.sqrt((state[0] - self.wrapped_env.current_goal[0])**2 +
+                                      (state[1] - self.wrapped_env.current_goal[1])**2)
+        return dist_to_goal_center < self.goal_radius
 
     def evaluate(self, model):
         # For using this method add "runner.obs[:] = env.evaluate(model)" in the update loop in ppo2.py

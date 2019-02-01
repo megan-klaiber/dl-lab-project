@@ -46,7 +46,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_interval', default=0, type=int, help='')
     parser.add_argument('--verbose', default=False, type=bool, help='print more information')
     parser.add_argument('--seed', default=42, type=int, help='random seed')
-    parser.add_argument('--sample_on_goal_area', default=True, type=bool, help='')
+    parser.add_argument('--sample_on_goal_area', default=False, type=bool, help='')
     args = parser.parse_args()
 
     # get all arguments
