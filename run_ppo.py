@@ -36,7 +36,7 @@ from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--eval_runs', default=10, type=int, help='How many runs for evaluation during training')
+    parser.add_argument('--eval_runs', default=50, type=int, help='How many runs for evaluation during training')
     parser.add_argument('--max_env_timestep', default=500, type=int, help='')
     parser.add_argument('--do_rendering', default=False, type=bool, help='')
     parser.add_argument('--sampling_method', default='uniform', type=str, help='')
@@ -62,28 +62,26 @@ if __name__ == "__main__":
     seed = args.seed
     sample_on_goal_area = args.sample_on_goal_area
 
+    print("\nRunning 'run_ppo.py' with following parameters: \n"
+          "\teval_runs: {}\n"
+          "\tmax_env_timestep: {}\n"
+          "\tdo_rendering: {}\n"
+          "\tsampling_method: {}\n"
+          "\tsteps_per_curriculum: {}\n"
+          "\tnsteps: {}\n"
+          "\ttotal_timesteps: {}\n"
+          "\tsave_interval: {}\n"
+          "\tverbose: {}\n"
+          "\tseed: {}\n"
+          "\tsample_on_goal_area: {}\n"
+          "".format(eval_runs, max_env_timestep, do_rendering, sampling_method,
+                    steps_per_curriculum, nsteps, total_timesteps, save_interval,
+                    verbose, seed, sample_on_goal_area)
+          )
+
     # set random seed
     random.seed(seed)
     np.random.seed(seed)
-
-    # initialize environment
-    env = WrappedPointMazeEnv()
-    env.post_init_stuff(eval_runs=eval_runs, max_env_timestep=max_env_timestep, do_rendering=do_rendering,
-                        sampling_method=sampling_method,
-                        steps_per_curriculum=steps_per_curriculum,
-                        verbose=verbose,
-                        sample_on_goal_area=sample_on_goal_area)
-
-    # train model
-    model = ppo2.learn(network='mlp',
-                       env=env,
-                       save_interval=save_interval,
-                       total_timesteps=total_timesteps,
-                       nsteps=nsteps,
-                       nminibatches=1,
-                       num_layers=2,
-                       num_hidden=64,
-                       activation=tf.nn.relu)
 
     # create results directory
     if not os.path.exists("results"):
@@ -97,8 +95,29 @@ if __name__ == "__main__":
 
     # to use evaluation see instructions in env_wrapper_rllab_to_openai.evaluate
     # save evaluation results
-    eval_file_name = os.path.join(experiment_dir, 'evaluation_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
-    env.save(file_name=eval_file_name)
+    eval_starts_file_name = os.path.join(experiment_dir, 'evaluation_starts_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
+    eval_results_file_name = os.path.join(experiment_dir, 'evaluation_results_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
+
+    # initialize environment
+    env = WrappedPointMazeEnv()
+    env.post_init(eval_runs=eval_runs, max_env_timestep=max_env_timestep, do_rendering=do_rendering,
+                  sampling_method=sampling_method,
+                  steps_per_curriculum=steps_per_curriculum,
+                  verbose=verbose,
+                  sample_on_goal_area=sample_on_goal_area,
+                  eval_starts_file_name=eval_starts_file_name,
+                  eval_results_file_name=eval_results_file_name)
+
+    # train model
+    model = ppo2.learn(network='mlp',
+                       env=env,
+                       save_interval=save_interval,
+                       total_timesteps=total_timesteps,
+                       nsteps=nsteps,
+                       nminibatches=1,
+                       num_layers=2,
+                       num_hidden=64,
+                       activation=tf.nn.relu)
 
     # Save the final state of the trained model.
     #model_dir_path = os.path.join("results", "model")
