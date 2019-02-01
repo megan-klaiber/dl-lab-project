@@ -63,24 +63,26 @@ if __name__ == "__main__":
     seed = args.seed
     sample_on_goal_area = args.sample_on_goal_area
 
-    print("\nRunning 'run_ppo.py' with following parameters: \n"
-          "\teval_runs: {}\n"
-          "\tmax_env_timestep: {}\n"
-          "\tdo_rendering: {}\n"
-          "\tsampling_method: {}\n"
-          "\tsteps_per_curriculum: {}\n"
-          "\tnsteps: {}\n"
-          "\touter_iter: {}\n"
-          "\ttotal_timesteps: {}\n"
-          "\tsave_interval: {}\n"
-          "\tverbose: {}\n"
-          "\tseed: {}\n"
-          "\tsample_on_goal_area: {}\n"
-          "".format(eval_runs, max_env_timestep, do_rendering, sampling_method,
-                    steps_per_curriculum, nsteps, args.outer_iter,
-                    total_timesteps, save_interval,
-                    verbose, seed, sample_on_goal_area)
-          )
+    param_info = ("\nRunning 'run_ppo.py' with following parameters: \n"
+                  "\teval_runs: {}\n"
+                  "\tmax_env_timestep: {}\n"
+                  "\tdo_rendering: {}\n"
+                  "\tsampling_method: {}\n"
+                  "\tsteps_per_curriculum: {}\n"
+                  "\tnsteps: {}\n"
+                  "\touter_iter: {}\n"
+                  "\ttotal_timesteps: {}\n"
+                  "\tsave_interval: {}\n"
+                  "\tverbose: {}\n"
+                  "\tseed: {}\n"
+                  "\tsample_on_goal_area: {}\n"
+                  "".format(eval_runs, max_env_timestep, do_rendering, sampling_method,
+                            steps_per_curriculum, nsteps, args.outer_iter,
+                            total_timesteps, save_interval,
+                            verbose, seed, sample_on_goal_area)
+                  )
+
+    print(param_info)
 
     # set random seed
     random.seed(seed)
@@ -104,6 +106,10 @@ if __name__ == "__main__":
     eval_starts_file_name = os.path.join(experiment_dir, 'evaluation_starts_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
     eval_results_file_name = os.path.join(experiment_dir, 'evaluation_results_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
 
+    config_filename = os.path.join(experiment_dir, 'config_{}_{}_{}.txt'.format(experiment_date, sampling_method, seed))
+    with open(config_filename, "w") as config_file:
+        config_file.write(param_info)
+    
     # initialize environment
     env = WrappedPointMazeEnv()
     env.post_init(eval_runs=eval_runs, max_env_timestep=max_env_timestep, do_rendering=do_rendering,
