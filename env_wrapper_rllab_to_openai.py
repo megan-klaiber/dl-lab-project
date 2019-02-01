@@ -38,7 +38,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
     def post_init(self, max_env_timestep, eval_runs, sampling_method, do_rendering,
                 steps_per_curriculum, verbose, sample_on_goal_area,
-                eval_starts_file_name, eval_results_file_name):
+                model_file_path, eval_starts_file_name, eval_results_file_name):
         self.max_env_timestep = max_env_timestep
         self.eval_runs = eval_runs
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
@@ -46,6 +46,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.steps_per_curriculum = steps_per_curriculum
         self.verbose = verbose
         self.sample_on_goal_area = sample_on_goal_area
+        self.model_file_path = model_file_path
         self.eval_starts_file_name = eval_starts_file_name
         self.eval_results_file_name = eval_results_file_name
 
@@ -273,13 +274,17 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 current_eval_results.append(0)
         self.eval_starts[current_eval_index] = current_eval_starts
         self.eval_results[current_eval_index] = current_eval_results
-        print(" ... Evaluation finished. Avg of current evaluation: {0}\n\n".format(np.average(current_eval_results)))
-        self.save()
+        print(" ... Evaluation finished. Avg of current evaluation: {0}\n".format(np.average(current_eval_results)))
+        self.save(model)
         obs = self.reset(train=True)
         return obs
 
-    def save(self):
-        print("Saving evaluation to: '{}' and '{}'", self.eval_starts_file_name, self.eval_results_file_name)
+    def save(self, model):
+        
+        print("Saving model to:\n\t'{}'".format(self.model_file_path))
+        model.save(self.model_file_path)
+        
+        print("Saving evaluations to: \n\t'{}'\n\t'{}'\n".format(self.eval_starts_file_name, self.eval_results_file_name))
 
         fh = open(self.eval_starts_file_name, "w")
         json.dump(self.eval_starts, fh)

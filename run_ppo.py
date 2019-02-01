@@ -1,10 +1,11 @@
-import time
+import argparse
 import datetime
-import numpy as np
-import tensorflow as tf
 import os
 import random
-import argparse
+import time
+
+import numpy as np
+import tensorflow as tf
 
 from baselines.ppo2 import ppo2
 from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
@@ -38,15 +39,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--eval_runs', default=50, type=int, help='How many runs for evaluation during training')
     parser.add_argument('--max_env_timestep', default=500, type=int, help='')
-    parser.add_argument('--do_rendering', default=False, type=bool, help='')
+    parser.add_argument('--do_rendering', default=False, action='store_true', help='')
     parser.add_argument('--sampling_method', default='uniform', type=str, help='')
     parser.add_argument('--steps_per_curriculum', default=50000, type=int, help='')
     parser.add_argument('--nsteps', default=50000, type=int, help='')
     parser.add_argument('--total_timesteps', default=400, type=int, help='outer iters / number multiply with nsteps')
     parser.add_argument('--save_interval', default=0, type=int, help='')
-    parser.add_argument('--verbose', default=False, type=bool, help='print more information')
+    parser.add_argument('--verbose', default=False, action='store_true', help='print more information')
     parser.add_argument('--seed', default=42, type=int, help='random seed')
-    parser.add_argument('--sample_on_goal_area', default=False, type=bool, help='')
+    parser.add_argument('--sample_on_goal_area', default=False, action='store_true', help='')
     args = parser.parse_args()
 
     # get all arguments
@@ -92,6 +93,9 @@ if __name__ == "__main__":
         "%Y-%m-%d_%H-%M-%S")
     experiment_dir = os.path.join('results',"ppo_maze_{}_{}_{}".format(experiment_date, sampling_method, seed))
     os.mkdir(experiment_dir)
+    
+    os.mkdir(os.path.join(experiment_dir, "model"))
+    model_file_path = os.path.join(experiment_dir, 'model' ,'model_{}_{}_{}'.format(experiment_date, sampling_method, seed))
 
     # to use evaluation see instructions in env_wrapper_rllab_to_openai.evaluate
     # save evaluation results
@@ -105,6 +109,7 @@ if __name__ == "__main__":
                   steps_per_curriculum=steps_per_curriculum,
                   verbose=verbose,
                   sample_on_goal_area=sample_on_goal_area,
+                  model_file_path=model_file_path,
                   eval_starts_file_name=eval_starts_file_name,
                   eval_results_file_name=eval_results_file_name)
 
@@ -119,11 +124,6 @@ if __name__ == "__main__":
                        num_hidden=64,
                        activation=tf.nn.relu)
 
-    # Save the final state of the trained model.
-    #model_dir_path = os.path.join("results", "model")
-    #model_file_path = os.path.join(model_dir_path, "final_trained_model")
-    # os.makedirs(model_dir_path, exist_ok=True)
-    os.mkdir(os.path.join(experiment_dir, "model"))
-    model_file_path = os.path.join(experiment_dir, 'model' ,'final_trained_model_{}_{}_{}'.format(experiment_date, sampling_method, seed))
-    print('Saving model to: ', model_file_path)
-    model.save(model_file_path)
+    # Last evaluation run, including saving the evaluation results and the model.
+    env.evaluate(model)
+
