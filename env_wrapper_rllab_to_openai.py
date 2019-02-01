@@ -34,6 +34,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         tmp = np.copy(self.wrapped_env.model.geom_size)
         tmp[-1,0] = self.goal_radius * 0.9
         self.wrapped_env.model.geom_size = tmp
+        self.done_in_previous_step = False
 
 
     def post_init(self, max_env_timestep, eval_runs, sampling_method, do_rendering,
@@ -81,29 +82,30 @@ class WrappedPointMazeEnv(PointMazeEnv):
         ac_space = super().action_space
         return Box(low=ac_space.low, high=ac_space.high, dtype=np.float32)
 
-    def step(self, actions, train=True):
-        obs, rewards, dones, infos = super().step(actions)
-        if self.do_rendering:
-            self.render()
-            # timestep = 0.05
-            # speedup = 1
-            # time.sleep(timestep / speedup)
-        if train:
-            self.global_train_steps += 1
+    def step(self, actions):
+
+        if (self.done_in_previous_step or (self.episodes_steps[-1] >= self.max_env_timestep)) or \
+            ((self.global_train_steps % self.steps_per_curriculum == 0) and self.sampling_method != 'uniform'):
+
+            if self.done_in_previous_step:
+                self.episodes_goal_reached.append(True)
+                self.goal_counts[self.current_start] += 1
+            else:
+                self.episodes_goal_reached.append(False)
+
             if (self.global_train_steps % self.steps_per_curriculum == 0):
                 print("self.global_train_steps / self.steps_per_curriculum: {0}".format(
-                        self.global_train_steps / self.steps_per_curriculum)
-                    )
-            # check if it's time for a new start-state distribution
+                                self.global_train_steps / self.steps_per_curriculum))
+            
             if (self.global_train_steps % self.steps_per_curriculum == 0) \
-               and self.sampling_method != 'uniform':
+                and self.sampling_method != 'uniform':
                 # find good starts
                 # if we want to keep the starts that have not been used before,
                 # change out to np.ones_like(self.goal_counts) * 0.5
                 goal_reach_frequencies = np.divide(self.goal_counts,
-                                                   self.start_counts,
-                                                   out=np.zeros_like(self.goal_counts),
-                                                   where=self.start_counts!=0)
+                                                    self.start_counts,
+                                                    out=np.zeros_like(self.goal_counts),
+                                                    where=self.start_counts!=0)
                 if self.verbose:
                     print('Number of starts sampled from:', len(goal_reach_frequencies))
                     if np.sum(goal_reach_frequencies > 1) >= 1:
@@ -126,35 +128,31 @@ class WrappedPointMazeEnv(PointMazeEnv):
                     print('...finished sampling new starts')
                 # line 2 in for loop
                 self.curriculum_starts = np.concatenate((self.curriculum_starts,
-                                                         self.sample_n(self.all_starts, 100)))
+                                                            self.sample_n(self.all_starts, 100)))
 
                 # reset the counts of how often a start state is used and how often the goal is reached
                 self.start_counts = np.zeros(self.curriculum_starts.shape[0])
                 self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
-                # also make a reset to one of the new starts (only do it here if it's not done
-                # automatically later in the next if)
-                if not (dones or (self.episodes_steps[-1] >= self.max_env_timestep)):
-                    obs = self.reset(train=train)
-                # if self.verbose:
-                #     print('Start counts and goal counts reset.')
 
-        self.episodes_steps[-1] += 1
-        # print(dones[0])
-        if dones or (self.episodes_steps[-1] >= self.max_env_timestep):
+            obs = self.reset(evaluate=False) 
+            self.done_in_previous_step = False
+            rewards = np.array([0.0])
+            dones = np.array([False])
+
+        else:
+            obs, rewards, dones, _ = super().step(actions)
+            self.episodes_steps[-1] += 1
+            self.global_train_steps += 1
+
             if dones:
-                self.episodes_goal_reached.append(True)
-                if train and self.sampling_method != 'uniform':
-                    self.goal_counts[self.current_start] += 1
-                    # if self.verbose:
-                    #     print('Goal reached, goal_count:',self.current_start,' +1')
-            else:
-                self.episodes_goal_reached.append(False)
-            # Reset env when goal is reached or max timesteps is reached.
-            # print("Resetted in step!")
-            if train:
-                obs = self.reset(train=train)
-        rewards = np.array([rewards])    # Maybe helps with command 'ev = explained_variance(values, returns)' in ppo2.py?
-        dones = np.array([dones])    # Caused problems in runner.py at the end, when applying "sf01(mb_dones)".
+                self.done_in_previous_step = True
+
+            rewards = np.array([rewards])    # Maybe helps with command 'ev = explained_variance(values, returns)' in ppo2.py?
+            dones = np.array([dones])    # Caused problems in runner.py at the end, when applying "sf01(mb_dones)".
+            
+        if self.do_rendering:
+            self.render()
+                
         infos = {}   # Caused problems in runner.py, with part "for info in infos: ..."
         return obs, rewards, dones, infos
 
@@ -216,15 +214,13 @@ class WrappedPointMazeEnv(PointMazeEnv):
         inds = np.random.choice(num_elements, size=n, replace=False)
         return array[inds, ...]
 
-    def reset(self, state=None, train=True):
+    def reset(self, state=None, evaluate=False):
         if state is not None:
             result = super().reset(state, goal=self.goal)
-        elif not train or self.sampling_method == 'uniform':
+        elif evaluate or self.sampling_method == 'uniform':
             result = super().reset(self.sample_uniform(), goal=self.goal)
-        elif train:
-            result = super().reset(self.sample_curriculum(), goal=self.goal)
         else:
-            result = super().reset(goal=self.goal)
+            result = super().reset(self.sample_curriculum(), goal=self.goal)
 
         self.episodes_steps.append(0)
 
@@ -260,6 +256,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         if self.eval_runs <= 0:
             return self.get_current_obs()
 
+        
         print("\n\nEvaluation started ... ")
         # remove current start from self.start_counts since the env is reset for evaluation
         if self.sampling_method != 'uniform':
@@ -269,12 +266,12 @@ class WrappedPointMazeEnv(PointMazeEnv):
         current_eval_results = []
         for i in range(self.eval_runs):
             print("\tFinished {} of {}".format(i, self.eval_runs), end='\r')
-            obs = self.reset(train=False)
+            obs = self.reset(evaluate=True)
             current_eval_starts.append((obs[0], obs[1]))
             done = False
             for s in range(self.max_env_timestep):
                 actions, _, _, _ = model.step(obs)
-                obs, _, done, _ = self.step(actions, train=False)
+                obs, _, done, _ = super().step(actions)
                 if done:
                     break
             if done:
@@ -285,7 +282,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.eval_results[current_eval_index] = current_eval_results
         print(" ... Evaluation finished. Avg of current evaluation: {0}\n".format(np.average(current_eval_results)))
         self.save(model)
-        obs = self.reset(train=True)
+        obs = self.reset(evaluate=False)
         return obs
 
     def save(self, model):
