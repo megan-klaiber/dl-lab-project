@@ -1,24 +1,19 @@
 import json
-import numpy as np
 import os
 import random
+import time
+
+import numpy as np
 
 from curriculum.envs.maze.point_maze_env import PointMazeEnv
 from gym.spaces import Box
-import time
 
-#from curriculum.envs.maze.point_env import PointEnv
-# from baselines.common.vec_env import VecEnv
 
-# class WrappedPointEnv(PointEnv, VecEnv):
-#class WrappedPointEnv(PointEnv):
 class WrappedPointMazeEnv(PointMazeEnv):
 
     def __init__(self):
-        # from curriculum.envs.base import FixedStateGenerator
-        # fixed_goal_generator = FixedStateGenerator(state=(4, 4))
-        # super().__init__(coef_inner_rew=1.0, maze_id=11, goal_generator=fixed_goal_generator)
-        super().__init__(coef_inner_rew=1.0, maze_id=11, reward_dist_threshold=0.5)
+        self.goal_radius = 0.3
+        super().__init__(coef_inner_rew=1.0, maze_id=11, reward_dist_threshold=self.goal_radius)
         self.num_envs = 1
         self.max_env_timestep = 500
         self.episodes_steps = []
@@ -41,7 +36,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         result = super().reset(goal=self.goal)
 
         tmp = np.copy(self.wrapped_env.model.geom_size)
-        tmp[-1,0] = 0.4
+        tmp[-1,0] = self.goal_radius * 0.9
         self.wrapped_env.model.geom_size = tmp
         self.sample_on_goal_area = True
 
@@ -61,7 +56,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
             # create starts near goal
             if self.sample_on_goal_area:
                 part_of_M = 100
-                length = np.random.uniform(0, 0.5, part_of_M)
+                length = np.random.uniform(0, self.goal_radius, part_of_M)
                 angle = np.pi * np.random.uniform(0, 2, part_of_M)
                 x = self.wrapped_env.current_goal[0] + length * np.cos(angle)
                 y = self.wrapped_env.current_goal[1] + length * np.sin(angle)
@@ -201,7 +196,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 # only want the start state part of the current state
                 s_1 = self.get_current_obs()[:2].reshape(1, -1)
                 starts = np.append(starts, s_1, axis=0)
-                self.render()
+                if self.do_rendering:
+                    self.render()
                 # timestep = 0.02
                 # speedup = 1
                 # time.sleep(timestep / speedup)
@@ -272,7 +268,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
             else:
                 current_eval_results.append(0)
         self.eval_results[current_eval_index] = current_eval_results
-        print(" ... Evaluation finished\n\n")
+        print(" ... Evaluation finished. Avg of current evaluation: {0}\n\n".format(np.average(current_eval_results)))
+        self.save()
         obs = self.reset(train=True)
         return obs
 
