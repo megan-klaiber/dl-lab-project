@@ -84,6 +84,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
     def step(self, actions):
 
+        self.global_train_steps += 1
+
         if (self.done_in_previous_step or (self.episodes_steps[-1] >= self.max_env_timestep)) or \
             ((self.global_train_steps % self.steps_per_curriculum == 0) and self.sampling_method != 'uniform'):
 
@@ -142,7 +144,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         else:
             obs, rewards, dones, _ = super().step(actions)
             self.episodes_steps[-1] += 1
-            self.global_train_steps += 1
+            
 
             if dones:
                 self.done_in_previous_step = True
@@ -221,7 +223,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
             result = super().reset(self.sample_uniform(), goal=self.goal)
         else:
             result = super().reset(self.sample_curriculum(), goal=self.goal)
-
+        if self.do_rendering:
+            self.render()
         self.episodes_steps.append(0)
 
         return result
@@ -272,6 +275,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
             for s in range(self.max_env_timestep):
                 actions, _, _, _ = model.step(obs)
                 obs, _, done, _ = super().step(actions)
+                if self.do_rendering:
+                    self.render()
                 if done:
                     break
             if done:
