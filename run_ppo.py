@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument('--sampling_method', default='uniform', type=str, help='')
     parser.add_argument('--steps_per_curriculum', default=50000, type=int, help='')
     parser.add_argument('--nsteps', default=50000, type=int, help='')
-    parser.add_argument('--total_timesteps', default=400, type=int, help='outer iters / number multiply with nsteps')
+    parser.add_argument('--outer_iter', default=400, type=int, help='outer iters / number multiply with nsteps')
     parser.add_argument('--save_interval', default=0, type=int, help='')
     parser.add_argument('--verbose', default=False, action='store_true', help='print more information')
     parser.add_argument('--seed', default=42, type=int, help='random seed')
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     sampling_method = args.sampling_method
     steps_per_curriculum = args.steps_per_curriculum
     nsteps = args.nsteps
-    total_timesteps = args.total_timesteps * nsteps
+    total_timesteps = args.outer_iter * nsteps
     save_interval = args.save_interval
     verbose = args.verbose
     seed = args.seed
@@ -70,13 +70,15 @@ if __name__ == "__main__":
           "\tsampling_method: {}\n"
           "\tsteps_per_curriculum: {}\n"
           "\tnsteps: {}\n"
+          "\touter_iter: {}\n"
           "\ttotal_timesteps: {}\n"
           "\tsave_interval: {}\n"
           "\tverbose: {}\n"
           "\tseed: {}\n"
           "\tsample_on_goal_area: {}\n"
           "".format(eval_runs, max_env_timestep, do_rendering, sampling_method,
-                    steps_per_curriculum, nsteps, total_timesteps, save_interval,
+                    steps_per_curriculum, nsteps, args.outer_iter,
+                    total_timesteps, save_interval,
                     verbose, seed, sample_on_goal_area)
           )
 

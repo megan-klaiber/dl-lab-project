@@ -50,6 +50,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         self.eval_starts_file_name = eval_starts_file_name
         self.eval_results_file_name = eval_results_file_name
 
+        if self.sampling_method not in ['uniform', 'good_starts', 'all_previous']:
+            raise ValueError("Unknown sampling method.")
+
         if self.sampling_method != 'uniform':
             # create starts near goal
             if self.sample_on_goal_area:
