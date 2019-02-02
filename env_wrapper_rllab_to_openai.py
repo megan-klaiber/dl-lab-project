@@ -68,6 +68,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.curriculum_starts = self.sample_nearby(starts_in_goal_area)
             else:
                 self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
+            if self.verbose:
+                print("self.curriculum_starts: ", self.curriculum_starts)
             self.all_starts = self.curriculum_starts
             self.start_counts = np.zeros(self.curriculum_starts.shape[0])
             self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
@@ -111,6 +113,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                                                    where=self.start_counts!=0)
                 if self.verbose:
                     print('Number of starts sampled from:', len(goal_reach_frequencies))
+                    print('Number of times it was sampled: ', np.sum(self.start_counts))
                     # if np.sum(goal_reach_frequencies > 1) >= 1:
                     # print('Goal reach frequencies with values bigger 1!')
                     # print(goal_reach_frequencies)
@@ -129,6 +132,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.curriculum_starts = self.sample_nearby(starts)
                 if self.verbose:
                     print('...finished sampling new starts')
+                    print('Sampled new starts: ', self.curriculum_starts)
                 # line 2 in for loop
                 self.curriculum_starts = np.concatenate((self.curriculum_starts,
                                                             self.sample_n(self.all_starts, 100)))
