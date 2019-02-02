@@ -68,6 +68,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.curriculum_starts = self.sample_nearby(starts_in_goal_area)
             else:
                 self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
+            if self.verbose:
+                print("self.curriculum_starts: ", self.curriculum_starts)
             self.all_starts = self.curriculum_starts
             self.start_counts = np.zeros(self.curriculum_starts.shape[0])
             self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
@@ -95,7 +97,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
             if self.done_in_previous_step:
                 self.episodes_goal_reached.append(True)
-                self.goal_counts[self.current_start] += 1
+                if self.sampling_method != 'uniform':
+                    self.goal_counts[self.current_start] += 1
             else:
                 self.episodes_goal_reached.append(False)
                 
@@ -110,6 +113,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                                                    where=self.start_counts!=0)
                 if self.verbose:
                     print('Number of starts sampled from:', len(goal_reach_frequencies))
+                    print('Number of times it was sampled: ', np.sum(self.start_counts))
                     # if np.sum(goal_reach_frequencies > 1) >= 1:
                     # print('Goal reach frequencies with values bigger 1!')
                     # print(goal_reach_frequencies)
@@ -128,6 +132,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.curriculum_starts = self.sample_nearby(starts)
                 if self.verbose:
                     print('...finished sampling new starts')
+                    print('Sampled new starts: ', self.curriculum_starts)
                 # line 2 in for loop
                 self.curriculum_starts = np.concatenate((self.curriculum_starts,
                                                             self.sample_n(self.all_starts, 100)))
@@ -175,7 +180,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return starts
 
 
-    def sample_nearby(self, states, n_new=200, variance=0.5, t_b=50, M=1000):
+    def sample_nearby(self, states, n_new=200, variance=2.0, t_b=50, M=1000):
         """
             n_new: number of sampled starts in the ned
             t_b:   horizon of one trajectory
