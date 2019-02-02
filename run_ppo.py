@@ -131,7 +131,7 @@ if __name__ == "__main__":
                        num_layers=2,
                        num_hidden=64,
                        activation=tf.nn.relu,
-                       gamma=0.998)
+                       gamma=0.99)
 
     # Last evaluation run, including saving the evaluation results and the model.
     env.evaluate()

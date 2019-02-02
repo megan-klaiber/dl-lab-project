@@ -95,7 +95,8 @@ class WrappedPointMazeEnv(PointMazeEnv):
 
             if self.done_in_previous_step:
                 self.episodes_goal_reached.append(True)
-                self.goal_counts[self.current_start] += 1
+                if self.sampling_method != 'uniform':
+                    self.goal_counts[self.current_start] += 1
             else:
                 self.episodes_goal_reached.append(False)
                 
@@ -175,7 +176,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return starts
 
 
-    def sample_nearby(self, states, n_new=200, variance=0.5, t_b=50, M=1000):
+    def sample_nearby(self, states, n_new=200, variance=2, t_b=50, M=1000):
         """
             n_new: number of sampled starts in the ned
             t_b:   horizon of one trajectory
