@@ -1,0 +1,49 @@
+{
+  "_hidden_keys": [],
+  "adaptive_std": false,
+  "brownian_horizon": 50,
+  "brownian_variance": 1,
+  "coll_eps": 0.3,
+  "discount": 0.995,
+  "distance_metric": "L2",
+  "exp_name": "start-brownian-maze11-run1_2019_01_29_17_27_20_0009",
+  "extend_dist_rew": false,
+  "goal_center": [
+    0,
+    0
+  ],
+  "goal_range": 7,
+  "goal_size": 2,
+  "horizon": 500,
+  "inner_iters": 5,
+  "learn_std": false,
+  "max_reward": 0.9,
+  "maze_id": 11,
+  "min_reward": 0.1,
+  "n_traj": 3,
+  "num_new_starts": 200,
+  "num_old_starts": 100,
+  "only_feasible": true,
+  "outer_iters": 400,
+  "output_gain": 0.1,
+  "persistence": 1,
+  "pg_batch_size": 20000,
+  "policy_init_std": 1,
+  "replay_buffer": true,
+  "sampling_res": 2,
+  "seed": 400,
+  "seed_with": "all_previous",
+  "start_center": [
+    0,
+    0
+  ],
+  "start_range": 7,
+  "start_size": 2,
+  "terminal_eps": 0.3,
+  "ultimate_goal": [
+    4,
+    4
+  ],
+  "use_trpo_paths": true,
+  "with_replacement": true
+}
