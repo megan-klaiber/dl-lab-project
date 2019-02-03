@@ -180,7 +180,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return starts
 
 
-    def sample_nearby(self, states, n_new=200, variance=2.0, t_b=50, M=1000):
+    def sample_nearby(self, states, n_new=200, variance=2, t_b=50, M=1000):
         """
             n_new: number of sampled starts in the ned
             t_b:   horizon of one trajectory
