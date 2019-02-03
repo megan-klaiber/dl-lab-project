@@ -10,30 +10,6 @@ import tensorflow as tf
 from baselines.ppo2 import ppo2
 from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
 
-# Final configuration parameters:
-# eval_runs = 10
-# max_env_timestep = 500
-# do_rendering = False
-# sampling_method='sample_nearby'
-# steps_per_curriculum = 50000
-# nsteps = 50000
-# total_timesteps = 400 * nsteps
-# save_interval = 0
-# verbose = False
-# sample_on_goal_area = True
-
-# Parameters for testing for short runs:
-# eval_runs = 2
-# max_env_timestep = 150
-# do_rendering = True
-# sampling_method = 'uniform'
-# steps_per_curriculum = 1500
-# nsteps = steps_per_curriculum
-# total_timesteps = 3 * nsteps
-# save_interval = 2
-# verbose = True
-# sample_on_goal_area = True
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -41,14 +17,18 @@ if __name__ == "__main__":
     parser.add_argument('--max_env_timestep', default=500, type=int, help='Maximum number of timesteps taken in an environment.')
     parser.add_argument('--do_rendering', default=False, action='store_true', help='True for render simulations.')
     parser.add_argument('--sampling_method', default='uniform', type=str,
-                        help='Defines the samppling method. Can be "uniform"')
-    parser.add_argument('--steps_per_curriculum', default=50000, type=int, help='')
-    parser.add_argument('--nsteps', default=50000, type=int, help='')
-    parser.add_argument('--outer_iter', default=400, type=int, help='outer iters')
+                        help='Defines the sampling method. Can be "uniform", "all_previous", or "good_starts".')
+    parser.add_argument('--steps_per_curriculum', default=50000, type=int,
+                        help='The number of steps taken in the environment between curriculum adaptions (for sampling methods "all_previous" and "good_starts"). Also defines the interval of the evaluation runs.')
+    parser.add_argument('--nsteps', default=50000, type=int,
+                        help='Number of environment steps for the inner loop of the PPO algorithm.')
+    parser.add_argument('--outer_iter', default=400, type=int,
+                        help='Number of environment steps for the outer loop of the PPO algorithm.')
     parser.add_argument('--save_interval', default=0, type=int, help='')
     parser.add_argument('--verbose', default=False, action='store_true', help='print more information')
     parser.add_argument('--seed', default=42, type=int, help='random seed')
-    parser.add_argument('--sample_on_goal_area', default=False, action='store_true', help='')
+    parser.add_argument('--sample_on_goal_area', default=False, action='store_true',
+                        help='When True, the start points for sampling when using sampling methods "all_previous" and "good_starts" are taken from the whole goal area. When False, only the center of the goal area is used.')
     args = parser.parse_args()
 
     # get all arguments
@@ -99,6 +79,7 @@ if __name__ == "__main__":
     experiment_dir = os.path.join('results',"ppo_maze_{}_{}_{}".format(experiment_date, sampling_method, seed))
     os.mkdir(experiment_dir)
     
+    # create directory for the model
     os.mkdir(os.path.join(experiment_dir, "model"))
     model_file_path = os.path.join(experiment_dir, 'model' ,'model_{}_{}_{}'.format(experiment_date, sampling_method, seed))
 
@@ -107,6 +88,7 @@ if __name__ == "__main__":
     eval_starts_file_name = os.path.join(experiment_dir, 'evaluation_starts_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
     eval_results_file_name = os.path.join(experiment_dir, 'evaluation_results_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
 
+    # save config
     config_filename = os.path.join(experiment_dir, 'config_{}_{}_{}.txt'.format(experiment_date, sampling_method, seed))
     with open(config_filename, "w") as config_file:
         config_file.write(param_info)
@@ -132,8 +114,9 @@ if __name__ == "__main__":
                        num_layers=2,
                        num_hidden=64,
                        activation=tf.nn.relu,
-                       gamma=0.99,
-                       lr=0.01)
+                       gamma=0.998,
+                       lr=0.01,
+                       seed=seed)
 
     # Last evaluation run, including saving the evaluation results and the model.
     env.evaluate()

@@ -10,36 +10,58 @@ from gym.spaces import Box
 
 
 class WrappedPointMazeEnv(PointMazeEnv):
+    ''' Wrapper class for the PointMazeEnv of rllab to make it usable
+        with OpenAI baselines PPO2 algorithm.
+
+        For this the following components have been added:
+        - establish general compatibility between rllab environment and PPO2 algorithm 
+          (e.g. return expected data types to PPO2 algorithm)
+        - handle evaluation of the environment 
+        - handle curriculum generation/adaptation
+    '''
 
     def __init__(self):
+        # goal radius as given in the paper
         self.goal_radius = 0.3
         super().__init__(coef_inner_rew=1.0, maze_id=11, reward_dist_threshold=self.goal_radius)
-        self.num_envs = 1
+        self.num_envs = 1     # required py PPO2
         self.episodes_steps = []
         self.episodes_goal_reached = []
         # integer that saves the index of the current start during training
         self.current_start = None
+        # initializing parameters
         self.global_train_steps = 0
         self.eval_starts = {}
         self.eval_results = {}
-        # intialize start state lists
-        # first initialize curriculum_starts with states close to the goal state
-
+        self.done_in_previous_step = False
+        # range of good_starts
         self.R_max = 0.9
         self.R_min = 0.1
-
+        # set goal
         self.goal = (4, 4)
         result = super().reset(goal=self.goal)
-
+        # visualize goal radius
         tmp = np.copy(self.wrapped_env.model.geom_size)
         tmp[-1,0] = self.goal_radius * 0.9
         self.wrapped_env.model.geom_size = tmp
-        self.done_in_previous_step = False
-
 
     def post_init(self, max_env_timestep, eval_runs, sampling_method, do_rendering,
                 steps_per_curriculum, verbose, sample_on_goal_area,
                 model_file_path, eval_starts_file_name, eval_results_file_name):
+        ''' Further initialization of attributes because initialization in init method was
+            not possible due to parameter handling in parent class. 
+
+            Params:
+            -------
+            model_file_path: str
+                             Path where to save the model
+            eval_starts_file_name: str
+                                   Path where to save the starts used during evaluation
+            eval_results_file_name: str
+                                    Path where to save the evaluation results 
+
+            Other params explained in run_ppo.py
+        '''
         self.max_env_timestep = max_env_timestep
         self.eval_runs = eval_runs
         self.sampling_method = sampling_method # can be either 'good_starts', 'all_previous' or 'uniform'
@@ -55,7 +77,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
             raise ValueError("Unknown sampling method.")
 
         if self.sampling_method != 'uniform':
-            # create starts near goal
+            # intialize start state list with states near goal
             if self.sample_on_goal_area:
                 part_of_M = 100
                 length = np.random.uniform(0, self.goal_radius, part_of_M)
@@ -67,34 +89,43 @@ class WrappedPointMazeEnv(PointMazeEnv):
                     print("starts_in_goal_area:\n", starts_in_goal_area)
                 self.curriculum_starts = self.sample_nearby(starts_in_goal_area)
             else:
+                # first initialize curriculum_starts with states close to the goal state
                 self.curriculum_starts = self.sample_nearby([self.wrapped_env.current_goal])
             if self.verbose:
                 print("self.curriculum_starts: ", self.curriculum_starts)
+            # intialize curriculum parameters
             self.all_starts = self.curriculum_starts
             self.start_counts = np.zeros(self.curriculum_starts.shape[0])
             self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
 
     @property
     def observation_space(self):
+        ''' Wrapper function for returning values using data types accepted by PPO2. '''
         ob_space = super().observation_space
         return Box(low=ob_space.low, high=ob_space.high, dtype=np.float32)
 
     @property
     def action_space(self):
+        ''' Wrapper function for returning values using data types accepted by PPO2. '''
         ac_space = super().action_space
         return Box(low=ac_space.low, high=ac_space.high, dtype=np.float32)
 
     def step(self, actions):
-
+        ''' Wrapper function for returning values using data types accepted by PPO2, also
+            handles curriculum adaptations and calls evaluate function.
+        '''
+        # check if evaluation should be executed and print outer iteration
         if (self.global_train_steps % self.steps_per_curriculum == 0):
             print("self.global_train_steps / self.steps_per_curriculum: {0}".format(
                             self.global_train_steps / self.steps_per_curriculum))
             self.evaluate()
         self.global_train_steps += 1
 
+        # check if environment should be reset to new start state
         if (self.done_in_previous_step or (self.episodes_steps[-1] >= self.max_env_timestep)) or \
             ((self.global_train_steps % self.steps_per_curriculum == 0) and self.sampling_method != 'uniform'):
 
+            # check if goal reached 
             if self.done_in_previous_step:
                 self.episodes_goal_reached.append(True)
                 if self.sampling_method != 'uniform':
@@ -102,6 +133,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
             else:
                 self.episodes_goal_reached.append(False)
                 
+            # check if curriculum should be updated
             if (self.global_train_steps % self.steps_per_curriculum == 0) \
                 and self.sampling_method != 'uniform':
                 # find good starts
@@ -114,26 +146,25 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 if self.verbose:
                     print('Number of starts sampled from:', len(goal_reach_frequencies))
                     print('Number of times it was sampled: ', np.sum(self.start_counts))
-                    # if np.sum(goal_reach_frequencies > 1) >= 1:
-                    # print('Goal reach frequencies with values bigger 1!')
-                    # print(goal_reach_frequencies)
                     print('Frequencies with which goal is reached:')
                     print(goal_reach_frequencies)
+                # check if only good starts or all previous starts used for curriculum update
                 if self.sampling_method == 'all_previous':
                     starts = self.curriculum_starts
                 else:
-                    # line 5 in for loop
+                    # line 5 in for loop of algorithm 1 in reverse curriculum paper
                     starts = self.good_starts(self.curriculum_starts, goal_reach_frequencies)
-                # line 6 (last line) in for loop
+                # line 6 (last line) in for loop of algorithm 1 in reverse curriculum paper
                 self.all_starts = np.concatenate((self.all_starts,starts))
-                # first line in for loop
+                # first line in for loop of algorithm 1 in reverse curriculum paper
                 if self.verbose:
                     print('Now sampling new starts...')
+                # sample new start states with brownian motion
                 self.curriculum_starts = self.sample_nearby(starts)
                 if self.verbose:
                     print('...finished sampling new starts')
                     print('Sampled new starts: ', self.curriculum_starts)
-                # line 2 in for loop
+                # line 2 in for loop of algorithm 1 in reverse curriculum paper
                 self.curriculum_starts = np.concatenate((self.curriculum_starts,
                                                             self.sample_n(self.all_starts, 100)))
 
@@ -141,20 +172,22 @@ class WrappedPointMazeEnv(PointMazeEnv):
                 self.start_counts = np.zeros(self.curriculum_starts.shape[0])
                 self.goal_counts = np.zeros(self.curriculum_starts.shape[0])
 
+            # reset the environment to new start state from curriculum
             obs = self.reset(evaluate=False) 
             self.done_in_previous_step = False
+            # prepare output values of the method
             rewards = np.array([0.0])
             dones = np.array([False])
 
         else:
+            # perform step
             obs, rewards, dones, _ = super().step(actions)
             self.episodes_steps[-1] += 1
             
-
             if dones:
                 self.done_in_previous_step = True
-
-            rewards = np.array([rewards])    # Maybe helps with command 'ev = explained_variance(values, returns)' in ppo2.py?
+            # prepare output values of the method
+            rewards = np.array([rewards])    # Helps with command 'ev = explained_variance(values, returns)' in ppo2.py
             dones = np.array([dones])    # Caused problems in runner.py at the end, when applying "sf01(mb_dones)".
             
         if self.do_rendering:
@@ -164,6 +197,9 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return obs, rewards, dones, infos
 
     def good_starts(self, states, success_freq):
+        ''' Determines the good starts of param "states" through success frequencies given 
+            in "success_freq".
+        '''
         starts = np.array([states[i] for i in range(len(states))
                         if (success_freq[i] > 0.1 and success_freq[i] < 0.9)])
         if self.verbose:
@@ -175,54 +211,59 @@ class WrappedPointMazeEnv(PointMazeEnv):
             starts = easy_starts
             if len(easy_starts) == 0:
                 if self.verbose:
-                    print('No good or easy starts. Using starts from las iteration again.')
+                    print('No good or easy starts. Using starts from last iteration again.')
                 return states
         return starts
 
+    def sample_nearby(self, states, n_new=200, variance=1.0, t_b=50, M=1000):
+        ''' Performs brownian motion from sampled states in param "states" and
+            returns a subsample of size "n_new" of these.
 
-    def sample_nearby(self, states, n_new=200, variance=2, t_b=50, M=1000):
-        """
-            n_new: number of sampled starts in the ned
-            t_b:   horizon of one trajectory
-            M:     number of state list after adding starts
-        """
-        # possibly add: radius which tests if sampled states are in a given
-        # radius around the sampled start state or around the goal?
-
+            Params:
+            -------
+            states: numpy.ndarray
+                    array of start states
+            n_new: int
+                   number of sampled starts in the ned
+            variance: float
+                      variance of normal distribution used for brownian motion
+            t_b: int
+                 horizon of one trajectory from a sampled start state
+            M: int
+               number of state list after adding starts
+        '''
         starts = np.array(states)
-        # if len(starts) == 1:
-        #     print('Only one state in starts')
         while(len(starts) < M):
+            # sample a start state
             s_0 = random.choice(starts)
-
+            # reset the env to the sampled start state
             super().reset(init_state=s_0, goal=self.goal)
             for i in range(t_b):
+                # sample a random action
                 a = np.random.normal(scale=variance, size=self.action_dim)
-                # only want the current observation
+                # perform the random step
                 _obs, _rew, _done, _env_info = super().step(a)
                 # only want the start state part of the current state
                 s_1 = self.get_current_obs()[:2].reshape(1, -1)
+                # check if this results in a goal state
                 if not self.is_in_goal_area(self.get_current_obs()):
                     starts = np.append(starts, s_1, axis=0)
                 if self.do_rendering:
                     self.render()
-                # timestep = 0.02
-                # speedup = 1
-                # time.sleep(timestep / speedup)
-                # rllab also tested if the exploration led through the goal state
-                # do not see why this is necessary atm
 
         # now sample from the M start states
         new_starts = self.sample_n(starts, n_new)
         return new_starts
 
     def sample_n(self, array, n):
-        """ sample n elements from the array """
+        """ Sample n elements from "array". """
         num_elements = array.shape[0]
         inds = np.random.choice(num_elements, size=n, replace=False)
         return array[inds, ...]
 
     def reset(self, state=None, evaluate=False):
+        ''' Wrapper function for handling which start state to use for the reset. '''
+        # check which sampling_method to use for the reset
         if state is not None:
             result = super().reset(state, goal=self.goal)
         elif evaluate or self.sampling_method == 'uniform':
@@ -236,18 +277,17 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return result
 
     def sample_uniform(self):
+        ''' Sample start state uniformly from feasible states. '''
         # sample a start state from a uniform start distribution
         sample_cnt = 0
         while True:
             sample_cnt += 1
             s = [np.random.uniform(low=-5, high=5),np.random.uniform(low=-5, high=5)]
             if self.is_feasible(s) and not self.is_in_goal_area(s):
-                # if self.verbose:
-                    # print('Samples until feasible:', sample_cnt)
                 return s
 
     def sample_curriculum(self):
-        # sample from the current start state distribution according to the curriculum
+        ''' Sample start state using uniform distribution on the states in the curriculum.'''
         start_ind = np.random.choice(self.curriculum_starts.shape[0])
         self.current_start = start_ind
         self.start_counts[start_ind] += 1
@@ -255,20 +295,22 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return self.curriculum_starts[start_ind]
 
     def is_in_goal_area(self, state):
+        ''' Checks if "state" is in goal area. '''
         dist_to_goal_center = np.sqrt((state[0] - self.wrapped_env.current_goal[0])**2 +
                                       (state[1] - self.wrapped_env.current_goal[1])**2)
         return dist_to_goal_center < self.goal_radius
 
     def set_model(self, model):
+        ''' Set the model which is required for the evaluation. Must be called in the
+            update loop in PPO2 in OpeanAI's baselines '''
         self.model = model
 
     def evaluate(self):
-        # For using this method add "env.set_model(model)" in the update loop in ppo2.py
+        ''' Evaluates the current model. Uses the model set in set_model. '''
 
         if self.eval_runs <= 0:
             return self.get_current_obs()
 
-        
         print("\n\nEvaluation started ... ")
         # remove current start from self.start_counts since the env is reset for evaluation
         if self.sampling_method != 'uniform':
@@ -300,6 +342,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         return obs
 
     def save(self):
+        ''' Save the evaluation results and the model. '''
         
         print("Saving model to:\n\t'{}'".format(self.model_file_path))
         self.model.save(self.model_file_path)
