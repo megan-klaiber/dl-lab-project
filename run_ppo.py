@@ -37,10 +37,11 @@ from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--eval_runs', default=50, type=int, help='How many runs for evaluation during training')
-    parser.add_argument('--max_env_timestep', default=500, type=int, help='')
-    parser.add_argument('--do_rendering', default=False, action='store_true', help='')
-    parser.add_argument('--sampling_method', default='uniform', type=str, help='')
+    parser.add_argument('--eval_runs', default=50, type=int, help='How many runs for evaluation during training.')
+    parser.add_argument('--max_env_timestep', default=500, type=int, help='Maximum number of timesteps taken in an environment.')
+    parser.add_argument('--do_rendering', default=False, action='store_true', help='True for render simulations.')
+    parser.add_argument('--sampling_method', default='uniform', type=str,
+                        help='Defines the samppling method. Can be "uniform"')
     parser.add_argument('--steps_per_curriculum', default=50000, type=int, help='')
     parser.add_argument('--nsteps', default=50000, type=int, help='')
     parser.add_argument('--outer_iter', default=400, type=int, help='outer iters')
@@ -131,7 +132,8 @@ if __name__ == "__main__":
                        num_layers=2,
                        num_hidden=64,
                        activation=tf.nn.relu,
-                       gamma=0.998)
+                       gamma=0.998,
+                       lr=0.01)
 
     # Last evaluation run, including saving the evaluation results and the model.
     env.evaluate()
