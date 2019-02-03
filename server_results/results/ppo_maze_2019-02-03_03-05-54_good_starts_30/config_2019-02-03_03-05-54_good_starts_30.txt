@@ -1,0 +1,14 @@
+
+Running 'run_ppo.py' with following parameters: 
+	eval_runs: 50
+	max_env_timestep: 500
+	do_rendering: False
+	sampling_method: good_starts
+	steps_per_curriculum: 50000
+	nsteps: 50000
+	outer_iter: 400
+	total_timesteps: 20000000 (= outer_iter * steps_per_curriculum)
+	save_interval: 0
+	verbose: False
+	seed: 30
+	sample_on_goal_area: False
