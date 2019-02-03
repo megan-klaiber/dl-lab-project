@@ -16,7 +16,7 @@ class WrappedPointMazeEnv(PointMazeEnv):
         For this the following components have been added:
         - establish general compatibility between rllab environment and PPO2 algorithm 
           (e.g. return expected data types to PPO2 algorithm)
-        - handle evaluation of the environment 
+        - handle model evaluation in the environment
         - handle curriculum generation/adaptation
     '''
 
