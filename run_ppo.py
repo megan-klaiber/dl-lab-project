@@ -10,30 +10,6 @@ import tensorflow as tf
 from baselines.ppo2 import ppo2
 from env_wrapper_rllab_to_openai import WrappedPointMazeEnv
 
-# Final configuration parameters:
-# eval_runs = 10
-# max_env_timestep = 500
-# do_rendering = False
-# sampling_method='sample_nearby'
-# steps_per_curriculum = 50000
-# nsteps = 50000
-# total_timesteps = 400 * nsteps
-# save_interval = 0
-# verbose = False
-# sample_on_goal_area = True
-
-# Parameters for testing for short runs:
-# eval_runs = 2
-# max_env_timestep = 150
-# do_rendering = True
-# sampling_method = 'uniform'
-# steps_per_curriculum = 1500
-# nsteps = steps_per_curriculum
-# total_timesteps = 3 * nsteps
-# save_interval = 2
-# verbose = True
-# sample_on_goal_area = True
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -103,6 +79,7 @@ if __name__ == "__main__":
     experiment_dir = os.path.join('results',"ppo_maze_{}_{}_{}".format(experiment_date, sampling_method, seed))
     os.mkdir(experiment_dir)
     
+    # create directory for the model
     os.mkdir(os.path.join(experiment_dir, "model"))
     model_file_path = os.path.join(experiment_dir, 'model' ,'model_{}_{}_{}'.format(experiment_date, sampling_method, seed))
 
@@ -111,6 +88,7 @@ if __name__ == "__main__":
     eval_starts_file_name = os.path.join(experiment_dir, 'evaluation_starts_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
     eval_results_file_name = os.path.join(experiment_dir, 'evaluation_results_{}_{}_{}.json'.format(experiment_date, sampling_method, seed))
 
+    # save config
     config_filename = os.path.join(experiment_dir, 'config_{}_{}_{}.txt'.format(experiment_date, sampling_method, seed))
     with open(config_filename, "w") as config_file:
         config_file.write(param_info)
