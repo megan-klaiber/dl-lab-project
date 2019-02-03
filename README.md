@@ -11,6 +11,7 @@ In `baselines/baselines/ppo2/ppo2.py` add the line `env.set_model(model)` after 
 
 To test the installation activate the conda environment (`conda activate rllab_goal_rl`) and execute `python ../dl-lab-project/run_ppo.py --outer_iter=2` from `rllab-curriculum-master/`. This assumes that you have the dl-lab-project repository and the rllab-curriculum repository in the same folder. Otherwise adapt the path to get to the run_ppo.py file from within the rllab-curriculum-master folder. 
 
+An overview over the existing parameters of run\_ppo.py can be listed by `python ../dl-lab-project/run_ppo.py --help`.
 
 
 
